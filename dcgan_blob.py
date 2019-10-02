@@ -11,10 +11,29 @@ from matplotlib import pyplot as plot
 import numpy as np
 import sys
 import os
+import datetime
 
 class GAN():
-    def __init__(self):
-        self.x_train, self.y_train, self.x_test, self.y_test = self.load_data()
+    def __init__(
+            self,
+            data_path,
+            data_no_files_to_load,
+            name,
+            folder_to_save_in
+            ):
+        if os.path.isdir(folder_to_save_in):
+            y_n = input(f"Folder '{folder_to_save_in}' already exists, continue?[y/N]")
+            if y_n != 'y':
+                quit()
+        else:
+            os.mkdir(folder_to_save_in)
+        self.folder_to_save_in = folder_to_save_in
+        date_separator = datetime.datetime.now().strftime("%d%m%Y-%H%M%S")
+        summary_file_name = f"{name}-summary-{date_separator}.log"
+        self.summary_file = os.path.join(folder_to_save_in, summary_file_name)
+        self.name = name
+        self.write_to_summary(f"Started summary file '{summary_file_name}'...")
+        self.x_train, self.y_train, self.x_test, self.y_test = self.load_data(data_path, data_no_files_to_load)
         # The training images / generated images
         self.img_height = self.x_train.shape[1]
         self.img_width = self.x_train.shape[2]
@@ -47,6 +66,11 @@ class GAN():
                 optimizer=optimizer
                 )
 
+    def write_to_summary(self, str_to_write):
+        with open(self.summary_file, 'a') as f:
+            f.write("{str_to_write}\n")
+        print(str_to_write)
+
     def build_generator(self):
         """
         All layers/values from dcgan implementation
@@ -65,7 +89,7 @@ class GAN():
         model.add(Activation("relu"))
         model.add(Conv2D(self.img_channels, kernel_size=3, padding="same"))
 
-        model.summary()
+        model.summary(print_fn=self.write_to_summary)
 
         noise = Input(shape=(self.latent_input,))
         img = model(noise)
@@ -95,24 +119,22 @@ class GAN():
         model.add(Flatten())
         model.add(Dense(1, activation='sigmoid'))
 
-        model.summary()
+        model.summary(print_fn=self.write_to_summary)
         img = Input(shape=self.img_shape)
         validity = model(img)
         return Model(img, validity)
 
-    def load_data(self):
+    def load_data(self, data_path, max_files_to_load):
         """
         Convert the data into [-1, 1]
         """
-        max_files_to_load = 20 # Approx 40 000 images
+        # 20 files = Approx 40 000 images
         no_files_loaded = 0
-        data_path = "/home/exjobb/style_transfer/numpy_dataset_256x256/water"
         # load everything in the folder
         x_train = False
-        # for file in os.listdir(data_path):
         for root, dirs, files in os.walk(data_path):
             for one_file in files:
-                print(f"Loading from:{root}/{one_file}")
+                self.write_to_summary(f"Loading from:{root}/{one_file}")
                 file_path = os.path.join(root, one_file)
                 if x_train is False:
                     x_train = self.load_blob(file_path)
@@ -131,7 +153,7 @@ class GAN():
         x_test = None
         y_train = None
         y_test = None
-        print(f"Loaded {x_train.shape[0]} images into x_train!")
+        self.write_to_summary(f"Loaded {x_train.shape[0]} images into x_train!")
         return (x_train, y_train, x_test, y_test)
 
     def load_blob(self, abspath):
@@ -187,7 +209,7 @@ class GAN():
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
         # Done
-        with open('loss-blob-water.log', 'a') as f:
+        with open(os.path.join(self.folder_to_save_in, 'loss-{self.name}.log'), 'a') as f:
             first = True
             for l in old_losses:
                 if first:
@@ -210,10 +232,16 @@ class GAN():
                 axs[i,j].imshow(gen_imgs[cnt, :,:,0], cmap='gray')
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig(f"images_blob_deeper/water-{epoch}.png")
+        folder_path = os.path.isdir(os.path.join(self.folder_to_save_in, 'images'))
+        if not os.path.isdir(folder_path):
+            os.mkdir(folder_path)
+        fig.savefig(f"{folder_path}/{self.name}-epoch-{epoch}.png")
         plot.close()
 
 if __name__ == '__main__':
-    gan = GAN()
+    gan = GAN(
+            "/home/exjobb/style_transfer/numpy_dataset_256x256/water",
+            20,
+            "with_water",
+            "results_with_water")
     gan.train(3000, batch_size=32)
-
