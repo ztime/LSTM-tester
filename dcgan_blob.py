@@ -68,7 +68,7 @@ class GAN():
 
     def write_to_summary(self, str_to_write):
         with open(self.summary_file, 'a') as f:
-            f.write("{str_to_write}\n")
+            f.write(f"{str_to_write}\n")
         print(str_to_write)
 
     def build_generator(self):
@@ -77,14 +77,19 @@ class GAN():
         """
         model = Sequential()
 
-        model.add(Dense(128 * 7 * 7, activation="relu", input_dim=self.latent_input))
-        model.add(Reshape((7,7,128)))
+        # We have to scale correctly in CNN layers
+        channels_to_up = 128
+        res_number = self.img_height // 4
+        magic_input_number = channels_to_up * res_number * res_number
+
+        model.add(Dense(magic_input_number, activation="relu", input_dim=self.latent_input))
+        model.add(Reshape((res_number,res_number,channels_to_up)))
         model.add(UpSampling2D())
-        model.add(Conv2D(128, kernel_size=3, padding="same"))
+        model.add(Conv2D(channels_to_up, kernel_size=3, padding="same"))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation("relu"))
         model.add(UpSampling2D())
-        model.add(Conv2D(64, kernel_size=3, padding="same"))
+        model.add(Conv2D(channels_to_up // 2, kernel_size=3, padding="same"))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation("relu"))
         model.add(Conv2D(self.img_channels, kernel_size=3, padding="same"))
@@ -209,7 +214,7 @@ class GAN():
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
         # Done
-        with open(os.path.join(self.folder_to_save_in, 'loss-{self.name}.log'), 'a') as f:
+        with open(os.path.join(self.folder_to_save_in, f'loss-{self.name}.log'), 'a') as f:
             first = True
             for l in old_losses:
                 if first:
@@ -232,7 +237,7 @@ class GAN():
                 axs[i,j].imshow(gen_imgs[cnt, :,:,0], cmap='gray')
                 axs[i,j].axis('off')
                 cnt += 1
-        folder_path = os.path.isdir(os.path.join(self.folder_to_save_in, 'images'))
+        folder_path = os.path.join(self.folder_to_save_in, 'images')
         if not os.path.isdir(folder_path):
             os.mkdir(folder_path)
         fig.savefig(f"{folder_path}/{self.name}-epoch-{epoch}.png")
@@ -240,8 +245,8 @@ class GAN():
 
 if __name__ == '__main__':
     gan = GAN(
-            "/home/exjobb/style_transfer/numpy_dataset_256x256/water",
+            "/home/exjobb/style_transfer/numpy_dataset_64x64/water",
             20,
-            "with_water",
+            "testing_water",
             "results_with_water")
     gan.train(3000, batch_size=32)
