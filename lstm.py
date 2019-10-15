@@ -1,6 +1,7 @@
-from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D
+from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint, TensorBoard
 
 import os
 import sys
@@ -12,6 +13,7 @@ class Noisy_LSTM():
             self,
             data_path,
             sequence_length,
+            no_sequences,
             hidden_units,
             name,
             folder_to_save_in
@@ -28,7 +30,7 @@ class Noisy_LSTM():
             self.summary_file = os.path.join(folder_to_save_in, summary_file_name)
             self.name = name
             self.write_to_summary(f"Started summary file '{summary_file_name}'...")
-            self.x_train, self.y_train = self.load_data(data_path, sequence_length, 10)
+            self.x_train, self.y_train = self.load_data(data_path, sequence_length, no_sequences)
             if self.x_train is False or self.y_train is False:
                 self.write_to_summary(f"Couldn't load any data from {data_path}, aborting!")
                 quit(1)
@@ -42,11 +44,27 @@ class Noisy_LSTM():
 
             self.network = self.build_network()
 
-            self.network.compile(loss='binary_crossentropy', optimizer='adadelta', metrics=['acc'])
+            self.network.compile(loss='binary_crossentropy', optimizer='adadelta', metrics=['accuracy'])
             self.network.summary()
+            # setup callbacks
+            model_folder = os.path.join(self.folder_to_save_in, 'saved_models')
+            model_filename = os.path.join(self.folder_to_save_in, 'saved_models', 'model--{epoch:02d}--{val_acc:.2f}.hdf5')
+            if not os.path.isdir(model_folder):
+                os.mkdir(model_folder)
+            self.model_callback = ModelCheckpoint(model_filename, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+            # self.model_callback = ModelCheckpoint(model_filename, verbose=1, save_best_only=True)
+            tensorboard_filepath = os.path.join(self.folder_to_save_in, 'tensorboard_logs')
+            self.tensorboard_callback = TensorBoard(log_dir=tensorboard_filepath, histogram_freq=0, write_graph=True, write_images=True)
 
     def train(self):
-        self.network.fit(self.x_train, self.y_train, batch_size=2, epochs=300, validation_split=0.05)
+        self.network.fit(
+                self.x_train,
+                self.y_train,
+                batch_size=10,
+                epochs=150,
+                validation_split=0.1,
+                callbacks=[self.model_callback, self.tensorboard_callback],
+                )
 
     def build_network(self):
         model = Sequential()
@@ -59,6 +77,16 @@ class Noisy_LSTM():
                     return_sequences=True,
                     )
             )
+        model.add(BatchNormalization())
+        model.add(
+                ConvLSTM2D(
+                    filters=self.img_height,
+                    kernel_size=(3,3),
+                    padding='same',
+                    return_sequences=True,
+                    )
+            )
+        model.add(BatchNormalization())
         model.add(
                 Conv3D(filters=1,
                     kernel_size=(3,3,3),
@@ -91,6 +119,8 @@ class Noisy_LSTM():
                 if all_data is False:
                     all_data = self.load_blob(file_path)
                     frames_available += all_data.shape[0]
+                    if frames_available // sequence_length > no_sequences:
+                        break
                 else:
                     more_data = self.load_blob(file_path)
                     all_data = np.concatenate((all_data, more_data), axis=0)
@@ -101,8 +131,10 @@ class Noisy_LSTM():
             return (False,False)
         # Check how many sequences we will get
         final_no_sequences = frames_available // sequence_length
-        print(f"{frames_available} // {sequence_length} == {final_no_sequences}")
-        final_no_sequences -= 1
+        if final_no_sequences > no_sequences:
+            final_no_sequences = no_sequences
+        else:
+            final_no_sequences -= 1
         img_width = all_data.shape[1]
         img_height = all_data.shape[2]
         # Load frames into sequences and ground truths
@@ -111,7 +143,6 @@ class Noisy_LSTM():
         # -1 in sequence_length becasue the final frame is in the ground truth
         x_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
         y_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
-        print(f"x_train shape {x_train.shape}")
         while True:
             training_frames = all_data[current_frame: current_frame + sequence_length]
             truth_frame = all_data[current_frame + 1: current_frame + sequence_length + 1]
@@ -140,17 +171,17 @@ class Noisy_LSTM():
         return frames_unpacked
 
     def write_to_summary(self, str_to_write):
-        # with open(self.summary_file, 'a') as f:
-            # f.write(f"{str_to_write}\n")
+        with open(self.summary_file, 'a') as f:
+            f.write(f"{str_to_write}\n")
         print(str_to_write)
 
 if __name__ == '__main__':
     lstm = Noisy_LSTM(
-            # "/home/exjobb/style_transfer/numpy_dataset_64x64/water",
-            "../numpy_small_set/rain",
+             "/home/exjobb/style_transfer/numpy_dataset_64x64/rain",
             25,
+            2000,
             100,
-            "testing_water",
-            "results_with_water")
+            "lstm_first_test",
+            "results_lstm_first_test")
     # lstm.train(3000, batch_size=32)
     lstm.train()
