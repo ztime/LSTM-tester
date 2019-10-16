@@ -56,7 +56,8 @@ class Load_Noisy_LSTM():
         if seed_data is None:
             # 1 is for number of sequences, since we are predicting it should only be one
             # self.seed_data = np.zeros((self.seq_length, self.img_width, self.img_height, self.img_channels))
-            self.seed_data = np.ones((self.seq_length, self.img_width, self.img_height, self.img_channels))
+            # self.seed_data = np.ones((self.seq_length, self.img_width, self.img_height, self.img_channels))
+            self.seed_data = np.random.random((self.seq_length, self.img_width, self.img_height, self.img_channels))
         else:
             # TODO: Load data here
             self.seed_data = np.zeros((self.seq_length, self.img_width, self.img_height, self.img_channels))
@@ -225,8 +226,8 @@ if __name__ == '__main__':
     loaded_model = Load_Noisy_LSTM(
                 "../results_from_training/results_lstm_first_test/saved_models/model--32--1.00.hdf5", #path_to_model,
                 "predict_lstm_first_test", #folder_to_save_in,
-                # 100, #no_frames_to_generate,
-                2, #no_frames_to_generate,
+                100, #no_frames_to_generate,
+                # 2, #no_frames_to_generate,
                 "lstm_first_test", #prefix,
                 seed_data=None,
                 seed_data_frame_offset=None,
