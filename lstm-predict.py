@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import datetime
 import subprocess
+import random
 from pprint import pprint
 
 class Load_Noisy_LSTM():
@@ -59,8 +60,9 @@ class Load_Noisy_LSTM():
             # self.seed_data = np.ones((self.seq_length, self.img_width, self.img_height, self.img_channels))
             self.seed_data = np.random.random((self.seq_length, self.img_width, self.img_height, self.img_channels))
         else:
+            self.seed_data = self.load_seed_data(seed_data, seed_data_frame_offset, self.seq_length)
             # TODO: Load data here
-            self.seed_data = np.zeros((self.seq_length, self.img_width, self.img_height, self.img_channels))
+            # self.seed_data = np.zeros((self.seq_length, self.img_width, self.img_height, self.img_channels))
 
         self.saved_frames = np.copy(self.seed_data)
 
@@ -150,62 +152,17 @@ class Load_Noisy_LSTM():
             print(f"Could not load {path_to_model}: {e}")
         return model
 
-    def load_data(self, data_path, sequence_length, no_sequences=None):
-        """
-        Convert the data into training data for lstm
-        total amount loaded will be sequence_size * no_sequences
-        no_sequences will default to *load everything*
-
-        No order can be guaranteed because of the os.walk not guaranteeing order
-
-        sequence length of 4 will generate
-        x = [[1,2,3]] y = [4]
-        i.e sequence_lengths are inclusive
-        """
-        frames_available = 0
-        # load everything in the folder
-        all_data = False
-        for root, dirs, files in os.walk(data_path):
-            for one_file in files:
-                file_path = os.path.join(root, one_file)
-                if all_data is False:
-                    all_data = self.load_blob(file_path)
-                    frames_available += all_data.shape[0]
-                    if frames_available // sequence_length > no_sequences:
-                        break
-                else:
-                    more_data = self.load_blob(file_path)
-                    all_data = np.concatenate((all_data, more_data), axis=0)
-                    frames_available += more_data.shape[0]
-                    if frames_available // sequence_length > no_sequences:
-                        break
-        if all_data is False:
-            return (False,False)
-        # Check how many sequences we will get
-        final_no_sequences = frames_available // sequence_length
-        if final_no_sequences > no_sequences:
-            final_no_sequences = no_sequences
-        else:
-            final_no_sequences -= 1
-        img_width = all_data.shape[1]
-        img_height = all_data.shape[2]
-        # Load frames into sequences and ground truths
-        current_frame = 0
-        current_sequence = 0
-        # -1 in sequence_length becasue the final frame is in the ground truth
-        x_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
-        y_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
-        while True:
-            training_frames = all_data[current_frame: current_frame + sequence_length]
-            truth_frame = all_data[current_frame + 1: current_frame + sequence_length + 1]
-            current_frame += sequence_length
-            x_train[current_sequence] = np.expand_dims(training_frames, axis=3)
-            y_train[current_sequence] = np.expand_dims(truth_frame, axis=3)
-            current_sequence += 1
-            if no_sequences is not None and current_sequence >= final_no_sequences:
-                break
-        # No validation for now
-        return (x_train, y_train)
+    def load_seed_data(self, seed_data, seed_data_frame_offset, seq_length):
+        loaded_frames = self.load_blob(seed_data)
+        offset = 0
+        if seed_data_frame_offset.lower() == 'random':
+            offset = random.randrange(loaded_frames.shape[0] - seq_length) # Shape[0] is number of frames
+        elif seed_data_frame_offset is not None:
+            offset = int(seed_data_frame_offset)
+        selected_frames = loaded_frames[offset:offset+seq_length, ::, ::]
+        print(f"selected_frames shape: {selected_frames.shape}")
+        quit()
+        return False
 
     def load_blob(self, abspath):
         """
@@ -229,9 +186,9 @@ if __name__ == '__main__':
                 100, #no_frames_to_generate,
                 # 2, #no_frames_to_generate,
                 "lstm_first_test", #prefix,
-                seed_data=None,
+                seed_data="../numpy_small_set/rain/20150517_1203_blobdata_part0.npy",
                 seed_data_frame_offset=None,
-                # save_images=False,
-                save_images=True,
-                generate_video=True,
+                save_images=False,
+                # save_images=True,
+                # generate_video=True,
                 )
