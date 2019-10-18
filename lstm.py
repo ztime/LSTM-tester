@@ -1,4 +1,4 @@
-from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization
+from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization, Dense, Flatten
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, TensorBoard
@@ -54,6 +54,7 @@ class Noisy_LSTM():
             self.model_callback = ModelCheckpoint(model_filename, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
             # self.model_callback = ModelCheckpoint(model_filename, verbose=1, save_best_only=True)
             tensorboard_filepath = os.path.join(self.folder_to_save_in, 'tensorboard_logs')
+            # self.tensorboard_callback = TensorBoard(log_dir=tensorboard_filepath, histogram_freq=5, write_grads=True, write_graph=True, write_images=True)
             self.tensorboard_callback = TensorBoard(log_dir=tensorboard_filepath, histogram_freq=0, write_graph=True, write_images=True)
 
     def train(self):
@@ -69,32 +70,25 @@ class Noisy_LSTM():
     def build_network(self):
         model = Sequential()
         model.add(
-                ConvLSTM2D(
-                    filters=self.img_height,
-                    kernel_size=(3,3),
+                Flatten(
                     input_shape=(self.sequence_length, self.img_width, self.img_height, 1),
-                    padding='same',
-                    return_sequences=True,
-                    )
-            )
-        model.add(BatchNormalization())
-        model.add(
-                ConvLSTM2D(
-                    filters=self.img_height,
-                    kernel_size=(3,3),
-                    padding='same',
-                    return_sequences=True,
-                    )
-            )
-        model.add(BatchNormalization())
-        model.add(
-                Conv3D(filters=1,
-                    kernel_size=(3,3,3),
-                    activation='sigmoid',
-                    padding='same',
-                    data_format='channels_last',
                     )
                 )
+        model.add(
+                LSTM(
+                    1024,
+                    return_sequences=True,
+                    )
+            )
+        model.add(BatchNormalization())
+        model.add(
+                LSTM(
+                    1024,
+                    return_sequences=True,
+                    )
+            )
+        model.add(BatchNormalization())
+        model.add(Reshape((self.sequence_length, self.img_width, self.img_height, 1)))
         return model
 
     def load_data(self, data_path, sequence_length, no_sequences=None):
@@ -180,8 +174,8 @@ if __name__ == '__main__':
              "/home/exjobb/style_transfer/numpy_dataset_64x64/rain",
             25,
             2000,
-            100,
-            "lstm_first_test",
-            "results_lstm_first_test")
+            50,
+            "lstm_non_conv_rain",
+            "results_lstm_non_conv_rain")
     # lstm.train(3000, batch_size=32)
     lstm.train()
