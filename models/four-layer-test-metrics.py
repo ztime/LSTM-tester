@@ -7,11 +7,11 @@ from keras import backend as K
 def get_description():
     desc = ["4 layers:"]
     desc.append("convlstm - 128 filters")
-    desc.append("convlstm - 128 filters")
+    desc.append("convlstm - 64 filters")
     desc.append("convlstm - 64 filters")
     desc.append("convlstm - 1 filters")
     desc.append("Using Kullback Leibler divergence as loss function instead")
-    desc.append("Also changed the second layer to 128 filters, see if we get overload")
+    desc.append("Also changed the second layer to 128 filters caused overload, reverting to 64")
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
@@ -52,7 +52,7 @@ def _build_network(sequence_length, img_width, img_height):
     model.add(BatchNormalization())
     model.add(
             ConvLSTM2D(
-                filters=128,
+                filters=64,
                 kernel_size=(3,3),
                 padding='same',
                 return_sequences=True,
