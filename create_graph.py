@@ -9,9 +9,21 @@ def main():
     parser.add_argument('csvfile', help="What file to use")
     parser.add_argument('-x', '--x_axis', help='What column to use as x axis, defaults to first column')
     parser.add_argument('-t', '--title', help='Title to display')
+    parser.add_argument('-n', '--no_of_entries', type=int, default=100, help='How many datapoints to use')
+    parser.add_argument('-o', '--offset', type=int, default=0, help='Offset to use for datapoints')
+    parser.add_argument('-e', '--exclude', nargs="*", help="Columns to ignore")
+    parser.add_argument('--y_min', help='Min y axis')
+    parser.add_argument('--y_max', help='Max y axis')
     args = parser.parse_args()
 
     legend_values_dict = parse_file(args.csvfile)
+    print("Loaded values")
+    for exclude in args.exclude:
+        popped = legend_values_dict.pop(exclude, None)
+        if popped is not None:
+            print(f"Successfully excluded {exclude}")
+        else:
+            print(f"Could not exclude {exclude}, continuing anyway...")
 
     if args.x_axis is None:
         # No axis choosen, take the first in the file
@@ -26,9 +38,12 @@ def main():
     if args.title:
         plt.title(args.title)
     for label, y_values in legend_values_dict.items():
-        plt.plot(x_axis, y_values, label=label)
+        y_values = [float(y) for y in y_values]
+        plt.plot(x_axis[args.offset:args.no_of_entries + args.offset], y_values[args.offset:args.no_of_entries + args.offset], label=label)
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     plt.subplots_adjust(right=0.75)
+    if args.y_min and args.y_max:
+        plt.ylim(args.y_min, args.y_max)
     plt.show()
 
 def parse_file(csvfile: str) -> {}:
