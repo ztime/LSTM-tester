@@ -11,65 +11,7 @@ import numpy as np
 import datetime
 import subprocess
 import random
-import argparse
 from pprint import pprint
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-o', '--output', type=os.path.abspath, help='Folder to store results in', required=True)
-    parser.add_argument('-p', '--prefix', help='Prefix for the files', required=True)
-    parser.add_argument('-m', '--model', help='What model to generate from (hdf5 file)', required=True)
-    parser.add_argument('-s', '--seed_data', help='What seed data to use', choices=['zeros', 'ones', 'random', 'real'], required=True)
-    parser.add_argument('-f', '--frames', type=int, help='How many frames to generate (full length will be sequence_length + frames)', required=True)
-    parser.add_argument('--real_seed_path', type=os.path.abspath, help="Path to seed data to use, required if seed_data = real")
-    parser.add_argument('--real_seed_offset', type=int, default=0, help="Offset in the real seed file to start sampling from")
-    parser.add_argument('--save_numpy_file', action='store_true', default=False, help='Store all frames as numpy file')
-    parser.add_argument('--save_images', action='store_true', default=False, help='Store all images in result folder')
-    parser.add_argument('--save_video', action='store_true', default=False, help='Store an video in results folder')
-    parser.add_argument('--store_zip', action='store_true', default=False, help='Zip the result-folder for easy transfer')
-
-    args = parser.parse_args()
-
-    # Manually parse some arguments
-    pprint(args)
-    if args.seed_data == 'real' and args.real_seed_path is None:
-        parser.error('--real_seed_path is required when using -s/--seed_data.')
-
-    cprint("Loading model...")
-    model = load_keras_model(args.model)
-    cprint("Loaded model!", print_green=True)
-    check_folder(args.output)
-
-def check_folder(folder_to_save_in):
-    if os.path.isdir(folder_to_save_in):
-        cprint(f"Folder '{folder_to_save_in}' already exists, continue?[y/N]")
-        y_n = input()
-        if y_n != 'y':
-            quit()
-    else:
-        os.mkdir(folder_to_save_in)
-
-def load_keras_model(path_to_model):
-    try:
-        model = load_model(path_to_model)
-    except (ValueError, OSError) as e:
-        cprint(f"Could not load {path_to_model}: {e}", print_red=True)
-        quit()
-    return model
-
-def cprint(string, print_red=False, print_green=False):
-    """
-    Used because Tensorflow prints so much garbage, it's hard to see
-    what is printed by the script and not.
-    Defaults to printing warning (yellow-ish) color.
-    """
-    if print_red:
-        print(f'\033[91m{string}\033[0m')
-    elif print_green:
-        print(f'\033[92m{string}\033[0m')
-    else:
-        print(f'\033[93m{string}\033[0m')
-
 
 class Load_Noisy_LSTM():
     def __init__(
@@ -82,6 +24,7 @@ class Load_Noisy_LSTM():
             seed_data_frame_offset=None,
             save_images=False,
             generate_video=False,
+            save_zip=False,
             ):
         # Check arguments
         try:
@@ -165,9 +108,18 @@ class Load_Noisy_LSTM():
                     f"{self.folder_to_save_in}/{self.prefix}-video.avi", # Where to save
                     ]
             print(f"Running command '{' '.join(commands)}'")
-            output = subprocess.run(' '.join(commands), shell=True, capture_output=True)
-            print(f"Done, output from FFMPEG: {output.stdout}")
-            print(f"Done, stderr from FFMPEG: {output.stderr}")
+            subprocess.run(' '.join(commands), shell=True)
+        # Zippity zappity
+        if save_zip:
+            print("Zipping new folder...")
+            commands = [
+                    'zip',
+                    '-r', # Recursive
+                    f"{self.folder_to_save_in}.zip", # Filename
+                    f"{self.folder_to_save_in}" # Folder to zip
+                    ]
+            print(f"Running command '{' '.join(commands)}'")
+            subprocess.run(' '.join(commands), shell=True)
 
     def generate_images(self, frames, folder_to_save_in, prefix):
         # fix for appending zeros for ffmpeg to filename
@@ -213,14 +165,16 @@ class Load_Noisy_LSTM():
     def load_seed_data(self, seed_data, seed_data_frame_offset, seq_length):
         loaded_frames = self.load_blob(seed_data)
         offset = 0
-        if seed_data_frame_offset.lower() == 'random':
-            offset = random.randrange(loaded_frames.shape[0] - seq_length) # Shape[0] is number of frames
-        elif seed_data_frame_offset is not None:
+        try:
             offset = int(seed_data_frame_offset)
+        except ValueError:
+            # Offset could be None or random
+            if seed_data_frame_offset is not None and seed_data_frame_offset.lower() == 'random':
+                offset = random.randrange(loaded_frames.shape[0] - seq_length) # Shape[0] is number of frames
         selected_frames = loaded_frames[offset:offset+seq_length, ::, ::]
-        print(f"selected_frames shape: {selected_frames.shape}")
-        quit()
-        return False
+        # We need to add the last channel dimension (which is just 1 but tensorflow wants it)
+        selected_frames = np.reshape(selected_frames, (seq_length, selected_frames.shape[1], selected_frames.shape[2], 1))
+        return selected_frames
 
     def load_blob(self, abspath):
         """
@@ -236,18 +190,47 @@ class Load_Noisy_LSTM():
         frames_unpacked = frames_unpacked.reshape((no_frames, width, height))
         return frames_unpacked
 
-
 if __name__ == '__main__':
-    main()
+    seeds = [945, 100, 1500, 400]
+    for seed in seeds:
+        loaded_model = Load_Noisy_LSTM(
+                    # "results_lstm_first_test/saved_models/model--32--1.00.hdf5", #path_to_model,
+                    # "results_lstm_conv_rain_with_dropout/saved_models/model--10--1.00.hdf5", #path_to_model,
+                    "../results_from_training/KL_test/saved_models/model--04--0.00.hdf5", #path_to_model,
+                    f"../results_from_training/KL_test_model_04_real_seed_{seed}", #folder_to_save_in,
+                    150, #no_frames_to_generate,
+                    # 2, #no_frames_to_generate,
+                    f"KL_test_model_04_real_seed_{seed}", #prefix,
+                    seed_data="../numpy_dataset_128x128/bugs/20190423_1215_0_blobdata_part2.npy",
+                    # seed_data_frame_offset=None,
+                    # seed_data_frame_offset='random',
+                    seed_data_frame_offset=seed,
+                    # save_images=False,
+                    save_images=True,
+                    generate_video=True,
+                    save_zip=True,
+                    )
     # loaded_model = Load_Noisy_LSTM(
-                # "../results_from_training/results_lstm_first_test/saved_models/model--32--1.00.hdf5", #path_to_model,
-                # "predict_lstm_first_test", #folder_to_save_in,
-                # 100, #no_frames_to_generate,
+                # "results_lstm_bugs_chance/saved_models/model--26--1.00.hdf5", #path_to_model,
+                # "predict_lstm_bugs_chance_random", #folder_to_save_in,
+                # 300, #no_frames_to_generate,
                 # # 2, #no_frames_to_generate,
-                # "lstm_first_test", #prefix,
-                # seed_data="../numpy_small_set/rain/20150517_1203_blobdata_part0.npy",
+                # "lstm_bugs_chance_random", #prefix,
+                # seed_data=None,
                 # seed_data_frame_offset=None,
-                # save_images=False,
-                # # save_images=True,
-                # # generate_video=True,
+                # # save_images=False,
+                # save_images=True,
+                # generate_video=False,
+                # )
+    # loaded_model = Load_Noisy_LSTM(
+                # "results_lstm_conv_rain_with_dropout/saved_models/model--10--1.00.hdf5", #path_to_model,
+                # "predict_lstm_conv_rain_w_dropout", #folder_to_save_in,
+                # # 300, #no_frames_to_generate,
+                # 2, #no_frames_to_generate,
+                # "lstm_first_conv_rain_w_dropout", #prefix,
+                # seed_data=None,
+                # seed_data_frame_offset=None,
+                # # save_images=False,
+                # save_images=True,
+                # generate_video=False,
                 # )
