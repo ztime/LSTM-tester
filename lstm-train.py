@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--no_of_sequences', type=int, default=-1, help='How many sequences to load, default is all')
     parser.add_argument('--save_tensorboard', action='store_true', default=True, help='Save tensorboard logs')
     parser.add_argument('--validation_split', type=float, default=0.2, help="Split training data into validation ratio")
+    parser.add_argument('--save_metrics_each_batch', help='Save metrics after each batch to file')
 
     args = parser.parse_args()
 
@@ -31,6 +32,14 @@ def main():
     date_separator = datetime.datetime.now().strftime("%d%m%Y-%H%M%S")
     summary_file_name = f"{args.prefix}-summary-{date_separator}.log"
     SUMMARY_FILE = os.path.join(args.output, summary_file_name)
+
+    # Check folder
+    if os.path.isdir(args.output):
+        y_n = input(f"'{args.output}' already exists, continue anyway?[y/N]")
+        if y_n != 'y':
+            quit()
+    else:
+        os.mkdir(args.output)
 
     # Check datapath, load data bc we need to know image dimensions of the trainingdata
     if args.no_of_sequences == -1:
@@ -41,13 +50,6 @@ def main():
         quit()
     img_width, img_height = x_train[0].shape[1], x_train[0].shape[2]
 
-    # Check folder
-    if os.path.isdir(args.output):
-        y_n = input(f"'{args.output}' already exists, continue anyway?[y/N]")
-        if y_n != 'y':
-            quit()
-    else:
-        os.mkdir(args.output)
     write_to_summary("Loaded data, folder created.")
     write_to_summary("Loading model...")
     # load model - go from path to file to module -> filename - relative path
@@ -80,6 +82,43 @@ def main():
         tensorboard_filepath = os.path.join(args.output, 'tensorboard_logs')
         tensorboard_callback = TensorBoard(log_dir=tensorboard_filepath, histogram_freq=0, write_graph=True, write_images=True)
         callbacks.append(tensorboard_callback)
+    # Save metrics after each batch to file
+    if args.save_metrics_each_batch is not None:
+        from pprint import pprint
+        import copy
+
+        class BatchMetrics(Callback):
+
+            def __init__(self, file_path):
+                self.file_path = file_path
+                super().__init__()
+
+            def on_batch_end(self, batch, loss):
+                # We remove 'batch' and 'size' since
+                # they are not relevant
+                loss_dict = copy.copy(loss)
+                loss_dict.pop('batch')
+                loss_dict.pop('size')
+                if not os.path.isfile(self.file_path):
+                    # It is our first pass! Create the file
+                    # and add headers
+                    with open(self.file_path, 'w') as f:
+                        f.write('batch\t')
+                        for key in loss_dict:
+                            f.write(f'{key}\t')
+                        f.write('\n')
+                # Now we can print every line
+                with open(self.file_path, 'a') as f:
+                    f.write(f'{batch}\t')
+                    for key in loss_dict:
+                        f.write(f'{loss_dict[key]}\t')
+                    f.write('\n')
+                # Done
+
+        batch_file = os.path.join(args.output, args.save_metrics_each_batch)
+        batch_metrics = BatchMetrics(batch_file)
+        callbacks.append(batch_metrics)
+
     # Training time
     try:
         history = model.fit(
@@ -130,7 +169,7 @@ def load_data(data_path, sequence_length, no_sequences=None):
         return (False,False)
     # Check how many sequences we will get
     final_no_sequences = frames_available // sequence_length
-    if final_no_sequences > no_sequences:
+    if no_sequences is not None and final_no_sequences > no_sequences:
         final_no_sequences = no_sequences
     else:
         final_no_sequences -= 1
@@ -149,7 +188,7 @@ def load_data(data_path, sequence_length, no_sequences=None):
         x_train[current_sequence] = np.expand_dims(training_frames, axis=3)
         y_train[current_sequence] = np.expand_dims(truth_frame, axis=3)
         current_sequence += 1
-        if no_sequences is not None and current_sequence >= final_no_sequences:
+        if current_sequence >= final_no_sequences - 1:
             break
     # No validation for now
     write_to_summary(f"Loaded {len(x_train)} sequences of length {sequence_length}!")

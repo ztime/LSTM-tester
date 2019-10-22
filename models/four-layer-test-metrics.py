@@ -6,12 +6,12 @@ from keras import backend as K
 
 def get_description():
     desc = ["4 layers:"]
-    desc += "convlstm - 128 filters"
-    desc += "convlstm - 64 filters"
-    desc += "convlstm - 64 filters"
-    desc += "convlstm - 1 filters"
-    desc += "Mean squared error ada delta"
-    desc += "Testing differnt loss functions as metrics to see if it gives any insights"
+    desc.append("convlstm - 128 filters")
+    desc.append("convlstm - 64 filters")
+    desc.append("convlstm - 64 filters")
+    desc.append("convlstm - 1 filters")
+    desc.append("Mean squared error ada delta")
+    desc.append("Testing differnt loss functions as metrics to see if it gives any insights")
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
@@ -28,7 +28,7 @@ def get_model(sequence_length, img_width, img_height):
                 'squared_hinge',
                 'hinge',
                 'logcosh',
-                'huber_loss',
+                # 'huber_loss',
                 'sparse_categorical_crossentropy',
                 'binary_crossentropy',
                 'kullback_leibler_divergence',
