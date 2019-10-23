@@ -63,6 +63,15 @@ def main():
     loaded_model = importlib.import_module(model_import)
     model = loaded_model.get_model(args.sequence_length, img_width, img_height)
     desc = loaded_model.get_description()
+    # We can let the model override some parameters
+    if hasattr(loaded_model, 'MODEL_OVERRIDES'):
+        for param_name, param_value in loaded_model.MODEL_OVERRIDES.items():
+            if param_name == 'sequence_length':
+                cprint(f"FYI: Model override the sequence length from {args.sequence_length} to {param_value}", print_red=True)
+                args.sequence_length = param_value
+            else:
+                # Fallback
+                cprint(f"Warning, model tried to override {param_name} but that is not supported!", print_red=True)
 
     write_to_summary("Loaded model successfully!", print_green=True)
     write_to_summary("Summary:")
