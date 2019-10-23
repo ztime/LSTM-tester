@@ -135,6 +135,11 @@ def main():
         model_filename = os.path.join(args.output, 'saved_models', 'model--Interrupted--saved.hdf5')
         model.save(model_filename)
         write_to_summary(f"Saved model to {model_filename}", print_green=True)
+        quit()
+    # Save the last model
+    model_filename = os.path.join(args.output, 'saved_models', 'model--last--saved.hdf5')
+    model.save(model_filename)
+    
 
 
 def load_data(data_path, sequence_length, no_sequences=None):
