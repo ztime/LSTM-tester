@@ -69,6 +69,9 @@ def main():
             if param_name == 'sequence_length':
                 cprint(f"FYI: Model override the sequence length from {args.sequence_length} to {param_value}", print_red=True)
                 args.sequence_length = param_value
+            elif param_name == 'batch_size':
+                cprint(f"FYI: Model override batchsize from {args.batchsize} to {param_value}", print_red=True)
+                args.batchsize = param_value
             else:
                 # Fallback
                 cprint(f"Warning, model tried to override {param_name} but that is not supported!", print_red=True)

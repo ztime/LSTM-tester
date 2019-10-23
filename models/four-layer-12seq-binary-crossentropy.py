@@ -6,6 +6,7 @@ from keras import backend as K
 
 MODEL_OVERRIDES = {
         "sequence_length": 12,
+        "batchsize": 1,
         }
 
 def get_description():
@@ -40,7 +41,6 @@ def _build_network(sequence_length, img_width, img_height):
                 return_sequences=True,
                 )
         )
-    model.add(BatchNormalization())
     model.add(
             ConvLSTM2D(
                 filters=128,
@@ -49,7 +49,6 @@ def _build_network(sequence_length, img_width, img_height):
                 return_sequences=True,
                 )
         )
-    model.add(BatchNormalization())
     model.add(
             ConvLSTM2D(
                 filters=128,
@@ -58,7 +57,6 @@ def _build_network(sequence_length, img_width, img_height):
                 return_sequences=True,
                 )
         )
-    model.add(BatchNormalization())
     model.add(
             Conv3D(filters=1,
                 kernel_size=(3,3,3),
