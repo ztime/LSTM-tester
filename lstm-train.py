@@ -5,6 +5,7 @@ import numpy as np
 import datetime
 
 from keras.callbacks import ModelCheckpoint, TensorBoard, Callback
+from keras.utils import plot_model
 
 from pprint import pprint
 
@@ -22,9 +23,10 @@ def main():
     parser.add_argument('-b', '--batchsize', type=int, help="What batchsize to use", required=True)
     parser.add_argument('--sequence_length', type=int, default=25, help='How long sequence length in lstm')
     parser.add_argument('--no_of_sequences', type=int, default=-1, help='How many sequences to load, default is all')
-    parser.add_argument('--save_tensorboard', action='store_true', default=True, help='Save tensorboard logs')
+    parser.add_argument('--save_tensorboard', action='store_true', help='Save tensorboard logs')
     parser.add_argument('--validation_split', type=float, default=0.2, help="Split training data into validation ratio")
     parser.add_argument('--save_metrics_each_batch', help='Save metrics after each batch to file')
+    parser.add_argument('--save_plot_model', action='store_true', help='Save an image plot of the model')
 
     args = parser.parse_args()
 
@@ -69,7 +71,7 @@ def main():
             if param_name == 'sequence_length':
                 cprint(f"FYI: Model override the sequence length from {args.sequence_length} to {param_value}", print_red=True)
                 args.sequence_length = param_value
-            elif param_name == 'batch_size':
+            elif param_name == 'batchsize':
                 cprint(f"FYI: Model override batchsize from {args.batchsize} to {param_value}", print_red=True)
                 args.batchsize = param_value
             else:
@@ -81,6 +83,10 @@ def main():
     model.summary(print_fn=lambda x: write_to_summary(x))
     write_to_summary("Description:")
     write_to_summary(desc)
+    if args.save_plot_model:
+        plot_file = os.path.join(args.output, f"{args.prefix}-plot-model.png")
+        plot_model(model, show_shapes=True, to_file=plot_file)
+        cprint(f"Saved model image to {plot_file}!", print_green=True)
     # Setup callbacks
     # Model saver
     model_folder = os.path.join(args.output, 'saved_models')
