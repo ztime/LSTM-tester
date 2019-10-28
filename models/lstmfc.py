@@ -1,4 +1,4 @@
-from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization, Flatten , Reshape
+from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization, Flatten , Reshape, Dense
 from keras.models import Sequential, Model
 from keras.optimizers import Adam, RMSprop
 from keras.callbacks import ModelCheckpoint, TensorBoard
@@ -42,17 +42,21 @@ def data_prepare(x_train, y_train):
     """
     total_sequences, sequence_length, img_width, img_height, img_channels = x_train.shape
     y_train = np.reshape(y_train, (total_sequences, img_width, img_height, img_channels))
+    x_train = np.reshape(x_train, (total_sequences, sequence_length, img_width * img_height * img_channels))
 
     return x_train, y_train
 
 
 def _build_network(sequence_length, img_width, img_height):
-    input_layer = Input(shape=(sequence_length, img_width, img_height, 1))
-    flat_earth = Flatten()(input_layer)
-    middle = LSTM(2048, return_sequence=True)(flat_earth)
-    top = LSTM(2048, return_sequence=False)(middle)
-    output = Reshape((img_width, img_height, 1))(top)
+    # 1 = img _channels
+    input_layer = Input(shape=(sequence_length, img_width * img_height * 1))
+    middle = LSTM(2048, return_sequences=True)(input_layer)
+    top = LSTM(2048, return_sequences=False)(middle)
+    toptop = Dense(img_width * img_height, activation='sigmoid')(top)
+    toptoptop = Reshape((img_width, img_height, 1))(toptop)
+    # output = Reshape((img_width, img_height, 1))(top)
 
-    model = Model(inputs=input_layer, outputs=output)
+    # model = Model(inputs=input_layer, outputs=output)
+    model = Model(inputs=input_layer, outputs=toptoptop)
     return model
 
