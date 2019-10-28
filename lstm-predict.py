@@ -236,3 +236,6 @@ def cprint(string, print_red=False, print_green=False):
         print(f'\033[92m{string}\033[0m')
     else:
         print(f'\033[93m{string}\033[0m')
+
+if __name__ == '__main__':
+    main()
