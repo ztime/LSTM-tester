@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--validation_split', type=float, default=0.2, help="Split training data into validation ratio")
     parser.add_argument('--save_metrics_each_batch', help='Save metrics after each batch to file')
     parser.add_argument('--save_plot_model', action='store_true', help='Save an image plot of the model')
+    parser.add_argument('--yes_to_all', action='store_true', help='Answer yes to all questions!')
 
     args = parser.parse_args()
 
@@ -37,11 +38,44 @@ def main():
 
     # Check folder
     if os.path.isdir(args.output):
-        y_n = input(f"'{args.output}' already exists, continue anyway?[y/N]")
+        if args.yes_to_all:
+            cprint(f"{args.output} already exists, using it anyway (thx to --yes_to_all flag)")
+            y_n = 'y'
+        else:
+            y_n = input(f"'{args.output}' already exists, continue anyway?[y/N]")
         if y_n != 'y':
             quit()
     else:
         os.mkdir(args.output)
+
+    # Before anything, we need to check if the model has something to override
+    write_to_summary("Loading model...")
+    # load model - go from path to file to module -> filename - relative path
+    working_dir = os.getcwd()
+    # Remove current directory
+    model_import = args.modelfile[len(working_dir) + 1:].split('/')
+    # Remove ".py" , yupp it's horrible
+    model_import[-1] = os.path.splitext(model_import[-1])[0]
+    # go to model.filename
+    model_import = '.'.join(model_import)
+    loaded_model = importlib.import_module(model_import)
+    # We can let the model override some parameters
+    model_has_data_prepare = False
+    if hasattr(loaded_model, 'MODEL_OVERRIDES'):
+        for param_name, param_value in loaded_model.MODEL_OVERRIDES.items():
+            if param_name == 'sequence_length':
+                cprint(f"FYI: Model override the sequence length from {args.sequence_length} to {param_value}", print_red=True)
+                args.sequence_length = param_value
+            elif param_name == 'batchsize':
+                cprint(f"FYI: Model override batchsize from {args.batchsize} to {param_value}", print_red=True)
+                args.batchsize = param_value
+            elif param_name == 'data_prepare':
+                cprint(f"FYI: Model has a function to override data reshape before training", print_red=True)
+                model_has_data_prepare = True
+            else:
+                # Fallback
+                cprint(f"Warning, model tried to override {param_name} but that is not supported!", print_red=True)
+
 
     # Check datapath, load data bc we need to know image dimensions of the trainingdata
     if args.no_of_sequences == -1:
@@ -53,36 +87,15 @@ def main():
     img_width, img_height = x_train[0].shape[1], x_train[0].shape[2]
 
     write_to_summary("Loaded data, folder created.")
-    write_to_summary("Loading model...")
-    # load model - go from path to file to module -> filename - relative path
-    working_dir = os.getcwd()
-    # Remove current directory
-    model_import = args.modelfile[len(working_dir) + 1:].split('/')
-    # Remove ".py" , yupp it's horrible
-    model_import[-1] = os.path.splitext(model_import[-1])[0]
-    # go to model.filename
-    model_import = '.'.join(model_import)
-    loaded_model = importlib.import_module(model_import)
+
     model = loaded_model.get_model(args.sequence_length, img_width, img_height)
     desc = loaded_model.get_description()
-    # We can let the model override some parameters
-    if hasattr(loaded_model, 'MODEL_OVERRIDES'):
-        for param_name, param_value in loaded_model.MODEL_OVERRIDES.items():
-            if param_name == 'sequence_length':
-                cprint(f"FYI: Model override the sequence length from {args.sequence_length} to {param_value}", print_red=True)
-                args.sequence_length = param_value
-            elif param_name == 'batchsize':
-                cprint(f"FYI: Model override batchsize from {args.batchsize} to {param_value}", print_red=True)
-                args.batchsize = param_value
-            else:
-                # Fallback
-                cprint(f"Warning, model tried to override {param_name} but that is not supported!", print_red=True)
-
     write_to_summary("Loaded model successfully!", print_green=True)
     write_to_summary("Summary:")
     model.summary(print_fn=lambda x: write_to_summary(x))
     write_to_summary("Description:")
     write_to_summary(desc)
+
     if args.save_plot_model:
         plot_file = os.path.join(args.output, f"{args.prefix}-plot-model.png")
         plot_model(model, show_shapes=True, to_file=plot_file)
@@ -138,6 +151,11 @@ def main():
         callbacks.append(batch_metrics)
 
     # Training time
+    if model_has_data_prepare:
+        # To allow models with several output or wierd
+        # data transformations
+        x_train, y_train = loaded_model.data_prepare(x_train, y_train)
+        write_to_summary("Reshaped/reconfigured training data bc model had overwritten it")
     try:
         history = model.fit(
                 x_train,
@@ -157,7 +175,6 @@ def main():
     # Save the last model
     model_filename = os.path.join(args.output, 'saved_models', 'model--last--saved.hdf5')
     model.save(model_filename)
-    
 
 
 def load_data(data_path, sequence_length, no_sequences=None):
@@ -201,12 +218,13 @@ def load_data(data_path, sequence_length, no_sequences=None):
     # Load frames into sequences and ground truths
     current_frame = 0
     current_sequence = 0
-    # -1 in sequence_length becasue the final frame is in the ground truth
+    # -1 in sequence_length becasue the final frame is in the ground truth, no wait skip that
+    # better to use sequence_length + 1 for y_train, makes more sense
     x_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
-    y_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
+    y_train = np.zeros((final_no_sequences, 1, img_width, img_height, 1))
     while True:
         training_frames = all_data[current_frame: current_frame + sequence_length]
-        truth_frame = all_data[current_frame + 1: current_frame + sequence_length + 1]
+        truth_frame = all_data[current_frame + sequence_length: current_frame + sequence_length + 1]
         current_frame += sequence_length
         x_train[current_sequence] = np.expand_dims(training_frames, axis=3)
         y_train[current_sequence] = np.expand_dims(truth_frame, axis=3)
