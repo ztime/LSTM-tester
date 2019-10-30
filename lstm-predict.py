@@ -69,8 +69,11 @@ def main():
             cprint(f"Generating frame {i}...")
         # Add axis in front, as the predict function expects a sequence (like during training)
         new_frame = model.predict(seed_data[np.newaxis, ::, ::, ::, ::])
-        # Remove the extra dimenson given by predict
-        new = new_frame[::,-1,::,::,::]
+        # Remove the extra dimenson given by predict if needed
+        if len(new_frame.shape) != 4:
+            new = new_frame[::,-1,::,::,::]
+        else:
+            new = new_frame
         max_in_frame = np.amax(new)
         # 0.02 is just a number choosen because it showed up in training
         # often when max is less than that, the frame is empty
@@ -121,7 +124,7 @@ def main():
                 'glob', # ...set to global
                 f"-i", # Pattern to use when ...
                 f"'{save_images_folder}/*.png'", # ...looking for image files
-                f"{args.output}/{args.output}-video.avi", # Where to save
+                f"{args.output}/{args.prefix}-video.avi", # Where to save
                 ]
         cprint(f"Running command '{' '.join(commands)}'")
         subprocess.run(' '.join(commands), shell=True)
@@ -137,7 +140,7 @@ def main():
         commands = [
                 'zip',
                 '-r', # Recursive
-                f"{args.output}/{args.output}.zip", # Filename
+                f"{args.output}/{args.prefix}.zip", # Filename
                 f"{args.output}" # Folder to zip
                 ]
         cprint(f"Running command '{' '.join(commands)}'")
