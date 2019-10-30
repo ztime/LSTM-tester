@@ -194,6 +194,9 @@ def load_data(data_path, sequence_length, no_sequences=None):
     all_data = False
     for root, dirs, files in os.walk(data_path):
         for one_file in files:
+            if one_file.split(".")[-1] != 'npy':
+                write_to_summary(f"Skipping {root}/{one_file}", print_red=True)
+                continue
             write_to_summary(f"Loading from:{root}/{one_file}")
             file_path = os.path.join(root, one_file)
             if all_data is False:
