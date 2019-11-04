@@ -3,14 +3,14 @@ import math
 from keras import backend as K
 import tensorflow as tf
 
+def euclidian_loss(y_true, y_pred):
+    return K.sqrt(K.sum(K.square(y_true - y_pred)))
+
 def count_pixel_loss(y_true, y_pred):
     """
     Assumues that y_true and y_pred are images
     """
-    y_t_sum = K.sum(y_true)
-    y_p_sum = K.sum(y_pred)
-
-    return K.abs(y_t_sum - y_p_sum)
+    return K.sum(y_true) - K.sum(y_pred)
 
 def log_count_pixel_loss(y_true, y_pred):
     return K.log(count_pixel_loss(y_true, y_pred))
@@ -18,7 +18,7 @@ def log_count_pixel_loss(y_true, y_pred):
 def norm_loss(y_true, y_pred):
     n_y_t = tf.linalg.norm(y_true)
     n_y_p = tf.linalg.norm(y_pred)
-    return K.abs(n_y_t - n_y_p)
+    return n_y_t - n_y_p
 
 def combine_count_and_norm_loss(y_true, y_pred):
     return count_pixel_loss(y_true, y_pred) + norm_loss(y_true, y_pred)
