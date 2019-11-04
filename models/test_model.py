@@ -5,7 +5,7 @@ from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
 
-from custom_loss import count_pixel_loss
+from custom_loss import log_count_pixel_loss, count_pixel_loss, norm_loss, combine_count_and_norm_loss
 
 MODEL_OVERRIDES = {
         "data_prepare": True,
@@ -13,12 +13,11 @@ MODEL_OVERRIDES = {
 
 def get_description():
     desc = ["Two layers, just to test custom loss"]
-    desc.append("binary crossentropy and rmsprop as optimizer")
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
-    model.compile(loss=count_pixel_loss, optimizer='adadelta', metrics=['accuracy'])
+    model.compile(loss=combine_count_and_norm_loss, optimizer='adadelta', metrics=[count_pixel_loss, log_count_pixel_loss, norm_loss])
     return model
 
 def data_prepare(x_train, y_train):
