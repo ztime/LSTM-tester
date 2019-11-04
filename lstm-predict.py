@@ -11,6 +11,8 @@ import random
 import argparse
 import tempfile
 
+from custom_loss import log_count_pixel_loss, count_pixel_loss, norm_loss, combine_count_and_norm_loss
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output', type=os.path.abspath, help='Folder to store results in', required=True)
@@ -25,6 +27,7 @@ def main():
     parser.add_argument('--save_video', action='store_true', default=False, help='Store an video in results folder')
     parser.add_argument('--save_zip', action='store_true', default=False, help='Zip the result-folder for easy transfer')
     parser.add_argument('--framerate', type=int, default=25, help="Framerate for generating video, not to be confused with frames")
+    parser.add_argument('-y', '--yes_to_all', action='store_true')
 
     args = parser.parse_args()
 
@@ -38,7 +41,7 @@ def main():
     cprint("Loading model...")
     model = load_keras_model(args.model)
     cprint("Loaded model!", print_green=True)
-    check_folder(args.output)
+    check_folder(args.output, args.yes_to_all)
     seq_length, img_width, img_height, img_channels = get_dimensions_from_model(model)
 
     seed_data_shape = (seq_length, img_width, img_height, img_channels)
@@ -210,18 +213,22 @@ def get_dimensions_from_model(model):
     img_channels = input_shape[4]
     return seq_length, img_width, img_height, img_channels
 
-def check_folder(folder_to_save_in):
+def check_folder(folder_to_save_in, yes_to_all):
     if os.path.isdir(folder_to_save_in):
-        cprint(f"Folder '{folder_to_save_in}' already exists, continue?[y/N]")
-        y_n = input()
-        if y_n != 'y':
-            quit()
+        if not yes_to_all:
+            cprint(f"Folder '{folder_to_save_in}' already exists, continue?[y/N]")
+            y_n = input()
+            if y_n != 'y':
+                quit()
+        else:
+            cprint(f"Folder '{folder_to_save_in}' already exists, continuing anyway bc of yes_to_all")
     else:
         os.mkdir(folder_to_save_in)
 
 def load_keras_model(path_to_model):
     try:
-        model = load_model(path_to_model)
+        # No need to mess around with loss-functions if we are just going to predict
+        model = load_model(path_to_model, compile=False)
     except (ValueError, OSError) as e:
         cprint(f"Could not load {path_to_model}: {e}", print_red=True)
         quit()

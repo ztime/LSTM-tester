@@ -10,9 +10,6 @@ def count_pixel_loss(y_true, y_pred):
     y_t_sum = K.sum(y_true)
     y_p_sum = K.sum(y_pred)
 
-    y_true = K.print_tensor(y_true, message=f"shape y_true:{K.shape(y_true)}")
-    print(f"K.shape(y_true):{K.shape(y_true)}")
-    print(f"K.shape(y_pred):{K.shape(y_pred)}")
     return K.abs(y_t_sum - y_p_sum)
 
 def log_count_pixel_loss(y_true, y_pred):
@@ -24,7 +21,7 @@ def norm_loss(y_true, y_pred):
     return K.abs(n_y_t - n_y_p)
 
 def combine_count_and_norm_loss(y_true, y_pred):
-    return K.log(count_pixel_loss(y_true, y_pred)) + norm_loss(y_true, y_pred)
+    return count_pixel_loss(y_true, y_pred) + norm_loss(y_true, y_pred)
 
 def pixel_wise_distances(frame):
     """
