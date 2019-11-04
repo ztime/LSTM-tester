@@ -9,7 +9,11 @@ from keras.utils import plot_model
 
 from pprint import pprint
 
+# Globals... :'(
 SUMMARY_FILE = None
+
+# Discard frames that are > DISCARD_CONSTANT * average in pixel density
+DISCARD_CONSTANT = 4
 
 def main():
     global SUMMARY_FILE
@@ -210,6 +214,23 @@ def load_data(data_path, sequence_length, no_sequences=None):
                 break
     if all_data is False:
         return (False,False)
+    # First we check the average, and see if there are any frames to discard
+    average_pixel_count = [np.sum(frame) for frame in all_data]
+    average_pixel_count = np.mean(average_pixel_count)
+    write_to_summary(f"Average pixel count:{average_pixel_count}")
+    skip_limit = DISCARD_CONSTANT * average_pixel_count
+    write_to_summary(f"Pixel count skip limit:{skip_limit}")
+    skip_indexes = []
+    index_counter = 0
+    for frame in all_data:
+        if np.sum(frame) > skip_limit:
+            skip_indexes.append(index_counter)
+        index_counter += 1
+    write_to_summary(f"{len(skip_indexes)} frames have a pixel count exceding the threshold:")
+    write_to_summary(skip_indexes)
+
+    # TODO: Skip sequences if they contain a frame that has been flagged
+
     # Check how many sequences we will get
     final_no_sequences = frames_available // sequence_length
     if no_sequences is not None and final_no_sequences > no_sequences:
