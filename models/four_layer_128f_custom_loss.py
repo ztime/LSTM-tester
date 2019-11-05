@@ -5,21 +5,21 @@ from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
 
-from custom_loss import log_count_pixel_loss, count_pixel_loss, norm_loss, combine_count_and_norm_loss, euclidian_loss
+from custom_loss import *
 
 MODEL_OVERRIDES = {
         "data_prepare": True,
         }
 
 def get_description():
-    desc = ["Four layers with custom loss - euclidian"]
+    desc = ["Four layers with custom loss - euclidian + pixel count"]
     desc.append("128 - 64 - 64 - 1 in filters")
     desc.append("ada delta as optimizer")
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
-    model.compile(loss=euclidian_loss, optimizer='adadelta', metrics=[count_pixel_loss, norm_loss])
+    model.compile(loss=combine_euclidian_and_pixel_count, optimizer='adadelta', metrics=[count_pixel_loss, norm_loss, euclidian_loss])
     return model
 
 def data_prepare(x_train, y_train):

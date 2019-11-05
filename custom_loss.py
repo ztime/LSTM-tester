@@ -23,6 +23,9 @@ def norm_loss(y_true, y_pred):
 def combine_count_and_norm_loss(y_true, y_pred):
     return count_pixel_loss(y_true, y_pred) + norm_loss(y_true, y_pred)
 
+def combine_euclidian_and_pixel_count(y_true, y_pred):
+    return euclidian_loss(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
+
 def pixel_wise_distances(frame):
     """
     Counts the distance between all pixels in frame
