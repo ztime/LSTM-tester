@@ -10,6 +10,9 @@ def count_pixel_loss(y_true, y_pred):
     """
     Assumues that y_true and y_pred are images
     """
+    # y_true = K.update_sub(K.sum(y_true), K.sum(y_pred))
+    # return y_true
+    # y_true = K.update_sub(K.sum(y_true), K.sum(y_pred))
     return K.sum(y_true) - K.sum(y_pred)
 
 def log_count_pixel_loss(y_true, y_pred):
@@ -24,7 +27,11 @@ def combine_count_and_norm_loss(y_true, y_pred):
     return count_pixel_loss(y_true, y_pred) + norm_loss(y_true, y_pred)
 
 def combine_euclidian_and_pixel_count(y_true, y_pred):
-    return euclidian_loss(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
+    eu = euclidian_loss(y_true, y_pred)
+    cp = count_pixel_loss(y_true, y_pred)
+    # return K.update_add(eu, cp)
+    return eu + cp
+    # return eu
 
 def pixel_wise_distances(frame):
     """
@@ -59,6 +66,18 @@ def pixel_wise_distances(frame):
             y.append(distances[i])
 
     return x, y
+
+def min_value_in_pred(y_true, y_pred):
+    return K.min(y_pred)
+
+def min_value_in_true(y_true, y_pred):
+    return K.min(y_true)
+
+def max_value_in_true(y_true, y_pred):
+    return K.max(y_true)
+
+def max_value_in_pred(y_true, y_pred):
+    return K.max(y_pred)
 
 def euclidian(x_1, x_2, y_1, y_2):
     return math.sqrt( (x_1 - y_1)**2 + (x_2 - y_2)**2 )
