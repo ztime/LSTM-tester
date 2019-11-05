@@ -210,7 +210,8 @@ def load_data(data_path, sequence_length, no_sequences=None):
                 more_data = load_blob(file_path)
                 all_data = np.concatenate((all_data, more_data), axis=0)
                 frames_available += more_data.shape[0]
-            if no_sequences is not None and frames_available // sequence_length > no_sequences:
+            # Add 10 sequences in case some are discarded for damaged frames
+            if no_sequences is not None and frames_available // sequence_length > no_sequences + 10:
                 break
     if all_data is False:
         return (False,False)
@@ -229,32 +230,44 @@ def load_data(data_path, sequence_length, no_sequences=None):
     write_to_summary(f"{len(skip_indexes)} frames have a pixel count exceding the threshold:")
     write_to_summary(skip_indexes)
 
-    # TODO: Skip sequences if they contain a frame that has been flagged
+    # Generate all indicies that will produce data
+    # and use that to filter out the ones with damaged frame in them 
+    indicies_pairs = []
+    frame_counter = 0
+    while frame_counter + sequence_length + 1 < frames_available:
+        all_valid_frames = True
+        for damaged_frames in skip_indexes:
+            if damaged_frames >= frame_counter and damaged_frames <= frame_counter + sequence_length + 1:
+                all_valid_frames = False
+                break
+        pair = (frame_counter, frame_counter + sequence_length + 1)
+        if not all_valid_frames:
+            write_to_summary(f"{pair} skipped because of damaged frame", print_red=True)
+        else:
+            indicies_pairs.append(pair)
+        frame_counter += sequence_length + 1
+    write_to_summary(f"{len(indicies_pairs)} valid sequences available, target is {no_sequences}")
 
     # Check how many sequences we will get
-    final_no_sequences = frames_available // sequence_length
+    # final_no_sequences = frames_available // sequence_length
+    final_no_sequences = len(indicies_pairs)
     if no_sequences is not None and final_no_sequences > no_sequences:
         final_no_sequences = no_sequences
-    else:
-        final_no_sequences -= 1
+        # Discard the ones we dont need
+        indicies_pairs = indicies_pairs[:final_no_sequences]
     img_width = all_data.shape[1]
     img_height = all_data.shape[2]
-    # Load frames into sequences and ground truths
-    current_frame = 0
-    current_sequence = 0
     # -1 in sequence_length becasue the final frame is in the ground truth, no wait skip that
     # better to use sequence_length + 1 for y_train, makes more sense
     x_train = np.zeros((final_no_sequences, sequence_length, img_width, img_height, 1))
     y_train = np.zeros((final_no_sequences, 1, img_width, img_height, 1))
-    while True:
-        training_frames = all_data[current_frame: current_frame + sequence_length]
-        truth_frame = all_data[current_frame + sequence_length: current_frame + sequence_length + 1]
-        current_frame += sequence_length
+    current_sequence = 0
+    for start_frame, end_frame in indicies_pairs:
+        training_frames = all_data[start_frame: start_frame + sequence_length]
+        truth_frame = all_data[start_frame + sequence_length: end_frame]
         x_train[current_sequence] = np.expand_dims(training_frames, axis=3)
         y_train[current_sequence] = np.expand_dims(truth_frame, axis=3)
         current_sequence += 1
-        if current_sequence >= final_no_sequences - 1:
-            break
     # No validation for now
     write_to_summary(f"Loaded {len(x_train)} sequences of length {sequence_length}!")
     return (x_train, y_train)
