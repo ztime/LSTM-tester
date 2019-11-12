@@ -201,7 +201,7 @@ def load_data_moving_mnist(sequence_length, no_sequences=None):
     assert(no_sequences is None or no_sequences <= 10000)
     write_to_summary("Loading moving mnist dataset...")
     loaded_numpy = np.load(MNIST_DATA_PATH)
-    write_to_summary(f"loaded_numpy shape:{loaded_numpy.shape}")
+    write_to_summary(f"Loaded shape:{loaded_numpy.shape}")
     import matplotlib.pyplot as plt
     fig, (x1, x2, x3, x4, x5, x6, x7, x8) = plt.subplots(1,8)
     x1.imshow(loaded_numpy[0,0], cmap='gray')
