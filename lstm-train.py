@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--save_metrics_each_batch', help='Save metrics after each batch to file')
     parser.add_argument('--save_plot_model', action='store_true', help='Save an image plot of the model')
     parser.add_argument('--yes_to_all', action='store_true', help='Answer yes to all questions!')
+    parser.add_argument('--use_moving_mnist', action='store_true', help='Use the moving mnist dataset (overrides)')
 
     args = parser.parse_args()
 
@@ -84,7 +85,10 @@ def main():
     # Check datapath, load data bc we need to know image dimensions of the trainingdata
     if args.no_of_sequences == -1:
         args.no_of_sequences = None
-    x_train, y_train = load_data(args.datapath, args.sequence_length, args.no_of_sequences)
+    if args.use_moving_mnist:
+        x_train, y_train = load_data_moving_mnist(args.sequence_length, args.no_of_sequences)
+    else:
+        x_train, y_train = load_data(args.datapath, args.sequence_length, args.no_of_sequences)
     if x_train is False or y_train is False:
         cprint("Could not load data! Aborting...", print_red=True)
         quit()
@@ -179,6 +183,39 @@ def main():
     # Save the last model
     model_filename = os.path.join(args.output, 'saved_models', 'model--last--saved.hdf5')
     model.save(model_filename)
+
+
+def load_data_moving_mnist(sequence_length, no_sequences=None):
+    """
+    Load the moving mnist dataset used in the lstm paper
+
+    Assumes that the file mnist_test_seq.npy is in the same folder
+    as this script
+
+    Can be downloaded from:
+        http://www.cs.toronto.edu/~nitish/unsupervised_video/
+    Maximum sequence length is 20 (so max use is 19) and available sequences are 10 000
+    """
+    MNIST_DATA_PATH = 'mnist_test_seq.npy'
+    assert(sequence_length <= 19)
+    assert(no_sequences is None or no_sequences <= 10000)
+    write_to_summary("Loading moving mnist dataset...")
+    loaded_numpy = np.load(MNIST_DATA_PATH)
+    write_to_summary(f"loaded_numpy shape:{loaded_numpy.shape}")
+    import matplotlib.pyplot as plt
+    fig, (x1, x2, x3, x4, x5, x6, x7, x8) = plt.subplots(1,8)
+    x1.imshow(loaded_numpy[0,0], cmap='gray')
+    x2.imshow(loaded_numpy[1,0], cmap='gray')
+    x3.imshow(loaded_numpy[2,0], cmap='gray')
+    x4.imshow(loaded_numpy[3,0], cmap='gray')
+
+    x5.imshow(loaded_numpy[1,1], cmap='gray')
+    x6.imshow(loaded_numpy[2,1], cmap='gray')
+    x7.imshow(loaded_numpy[3,1], cmap='gray')
+    x8.imshow(loaded_numpy[4,1], cmap='gray')
+    plt.tight_layout()
+    plt.show()
+    quit()
 
 
 def load_data(data_path, sequence_length, no_sequences=None):
