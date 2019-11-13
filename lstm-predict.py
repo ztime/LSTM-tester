@@ -28,6 +28,8 @@ def main():
     parser.add_argument('--save_zip', action='store_true', default=False, help='Zip the result-folder for easy transfer')
     parser.add_argument('--framerate', type=int, default=25, help="Framerate for generating video, not to be confused with frames")
     parser.add_argument('-y', '--yes_to_all', action='store_true')
+    parser.add_argument('--use_moving_mnist', action='store_true')
+    parser.add_argument('--use_output_no', type=int, help='If model has several outputs, use this index')
 
     args = parser.parse_args()
 
@@ -57,8 +59,12 @@ def main():
         seed_data = np.random.random(seed_data_shape)
         cprint("Seed data is random")
     elif args.seed_data == 'real':
-        seed_data = load_real_seed_data(args.real_seed_path, args.real_seed_offset, seq_length)
-        cprint("Seed data is loaded from real data")
+        if args.use_moving_mnist:
+            seed_data = load_moving_mnist(args.real_seed_offset, seq_length)
+            cprint("Seed data loaded from moving mnist")
+        else:
+            seed_data = load_real_seed_data(args.real_seed_path, args.real_seed_offset, seq_length)
+            cprint("Seed data is loaded from real data")
     cprint("Generating frames...")
 
     # These are all the frames loaded AND generated, seed_data is used as a stack
@@ -72,6 +78,8 @@ def main():
             cprint(f"Generating frame {i}...")
         # Add axis in front, as the predict function expects a sequence (like during training)
         new_frame = model.predict(seed_data[np.newaxis, ::, ::, ::, ::])
+        if args.use_output_no is not None:
+            new_frame = new_frame[args.use_output_no]
         # Remove the extra dimenson given by predict if needed
         if len(new_frame.shape) != 4:
             new = new_frame[::,-1,::,::,::]
@@ -196,6 +204,19 @@ def load_blob(abspath):
     frames_unpacked = np.unpackbits(loaded_frames)
     frames_unpacked = frames_unpacked.reshape((no_frames, width, height))
     return frames_unpacked
+
+def load_moving_mnist(sequence_index, sequence_length):
+    """
+    Loads a single moving mnist sequence to be used as seed
+
+    !Messed up indexing on the data!
+    """
+    MOVING_MNIST_PATH = "mnist_test_seq.npy"
+    loaded_numpy = np.load(MOVING_MNIST_PATH)
+    sequence = loaded_numpy[:sequence_length, sequence_index]
+    # Adjust channel dimensions
+    sequence = np.expand_dims(sequence, axis=3)
+    return sequence
 
 def get_dimensions_from_model(model):
     # There really must be a better way, but this is uses get_config()
