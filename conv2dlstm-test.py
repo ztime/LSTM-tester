@@ -43,15 +43,14 @@ seq.compile(loss='binary_crossentropy', optimizer='adadelta')
 def generate_movies(n_samples=1200, n_frames=15):
     row = 80
     col = 80
-    noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
-    shifted_movies = np.zeros((n_samples, n_frames, row, col, 1),
-    dtype=np.float)
+    # This contains all the data, split it up later into noisy and shifted
+    buffer = np.zeros((n_samples, n_frames + 1, row, col, 1), dtype=np.float)
 
-    for i in range(n_samples):
+    for sample_index in range(n_samples):
         # Add 3 to 7 moving squares
         n = np.random.randint(3, 8)
 
-        for j in range(n):
+        for box_index in range(n):
             # Initial position
             xstart = np.random.randint(20, 60)
             ystart = np.random.randint(20, 60)
@@ -62,25 +61,25 @@ def generate_movies(n_samples=1200, n_frames=15):
             # Size of the square
             w = np.random.randint(2, 4)
 
-            for t in range(n_frames):
+            for t in range(n_frames + 1):
                 x_shift = xstart + directionx * t
                 y_shift = ystart + directiony * t
-                noisy_movies[i, t, x_shift - w: x_shift + w, y_shift - w: y_shift + w, 0] += 1
+                buffer[sample_index, t, x_shift - w: x_shift + w, y_shift - w: y_shift + w, 0] += 1
 
-            # Make it more robust by adding noise.
-            # The idea is that if during inference,
-            # the value of the pixel is not exactly one,
-            # we need to train the network to be robust and still
-            # consider it as a pixel belonging to a square.
-            if np.random.randint(0, 2):
-                noise_f = (-1)**np.random.randint(0, 2)
-                noisy_movies[i, t, x_shift - w - 1: x_shift + w + 1, y_shift - w - 1: y_shift + w + 1, 0] += noise_f * 0.1
+                # Make it more robust by adding noise.
+                # The idea is that if during inference,
+                # the value of the pixel is not exactly one,
+                # we need to train the network to be robust and still
+                # consider it as a pixel belonging to a square.
+                if np.random.randint(0, 2):
+                    noise_f = (-1)**np.random.randint(0, 2)
+                    buffer[sample_index, t, x_shift - w - 1: x_shift + w + 1, y_shift - w - 1: y_shift + w + 1, 0] += noise_f * 0.1
 
-            # Shift the ground truth by 1
-            x_shift = xstart + directionx * (t + 1)
-            y_shift = ystart + directiony * (t + 1)
-            shifted_movies[i, t, x_shift - w: x_shift + w, y_shift - w: y_shift + w, 0] += 1
-
+    noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+    shifted_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+    for sample_index in range(n_samples):
+        noisy_movies[sample_index] = buffer[sample_index,:n_frames,::,::]
+        shifted_movies[sample_index] = buffer[sample_index,1:n_frames+1,::,::]
     # Cut to a 40x40 window
     noisy_movies = noisy_movies[::, ::, 20:60, 20:60, ::]
     shifted_movies = shifted_movies[::, ::, 20:60, 20:60, ::]
@@ -92,8 +91,11 @@ def generate_movies(n_samples=1200, n_frames=15):
 print("Generate movies...")
 noisy_movies, shifted_movies = generate_movies(n_samples=1200)
 print("Training")
-# seq.fit(noisy_movies[:1000], shifted_movies[:1000], batch_size=10, epochs=300, validation_split=0.05)
-seq.fit(noisy_movies[:2], shifted_movies[:2], batch_size=1, epochs=1, validation_split=0.05)
+try:
+    seq.fit(noisy_movies[:1000], shifted_movies[:1000], batch_size=10, epochs=300, validation_split=0.05)
+    # seq.fit(noisy_movies[:2], shifted_movies[:2], batch_size=1, epochs=1, validation_split=0.05)
+except KeyboardInterrupt as e:
+    print("Interrupted, saving model!")
 print("Saving model")
 seq.save('conv2dlstm-test-trained.model')
 
@@ -120,23 +122,22 @@ track2 = noisy_movies[which][::, ::, ::, ::]
 for i in range(15):
     fig = plt.figure(figsize=(10, 5))
 
-    ax = fig.add_subplot(121)
+    ax_model = fig.add_subplot(121)
 
     if i >= 7:
-        ax.text(1, 3, 'Predictions !', fontsize=20, color='w')
+        ax_model.text(1, 3, 'Predictions !', fontsize=20, color='w')
     else:
-        ax.text(1, 3, 'Initial trajectory', fontsize=20)
+        ax_model.text(1, 3, 'Initial trajectory', fontsize=20)
 
-    toplot = track[i, ::, ::, 0]
+    ax_model.imshow(track[i, ::, ::, 0])
 
-    plt.imshow(toplot)
-    ax = fig.add_subplot(122)
-    plt.text(1, 3, 'Ground truth', fontsize=20)
+    ax_gt = fig.add_subplot(122)
+    ax_gt.text(1, 3, 'Ground truth', fontsize=20)
 
     toplot = track2[i, ::, ::, 0]
     if i >= 2:
         toplot = shifted_movies[which][i - 1, ::, ::, 0]
 
-    plt.imshow(toplot)
+    plt.imshow(toplot, cmap='gray')
     plt.savefig('%i_animate.png' % (i + 1))
     print(f"Saving image {i}")
