@@ -201,21 +201,69 @@ def load_data_moving_mnist(sequence_length, no_sequences=None):
     assert(no_sequences is None or no_sequences <= 10000)
     write_to_summary("Loading moving mnist dataset...")
     loaded_numpy = np.load(MNIST_DATA_PATH)
+    _,total_loaded_sequences, width, height = loaded_numpy.shape
     write_to_summary(f"Loaded shape:{loaded_numpy.shape}")
-    import matplotlib.pyplot as plt
-    fig, (x1, x2, x3, x4, x5, x6, x7, x8) = plt.subplots(1,8)
-    x1.imshow(loaded_numpy[0,0], cmap='gray')
-    x2.imshow(loaded_numpy[1,0], cmap='gray')
-    x3.imshow(loaded_numpy[2,0], cmap='gray')
-    x4.imshow(loaded_numpy[3,0], cmap='gray')
+    if no_sequences is None:
+        no_sequences = total_loaded_sequences
+    x_train = np.zeros((no_sequences, sequence_length, width, height, 1))
+    y_train = np.zeros((no_sequences, 1, width, height, 1))
+    # Wierd-ass format (frame, sequence, width, height) !?
+    # Reformat to sane human values (sequence, frame, width, height)
+    # and shape the sequence length at the same time
+    for seq_count in range(no_sequences):
+        for frame_count in range(sequence_length):
+            x_train[seq_count, frame_count] = np.expand_dims(loaded_numpy[frame_count, seq_count], axis=3)
+        y_train[seq_count, 0] = np.expand_dims(loaded_numpy[frame_count + 1, seq_count], axis=3)
 
-    x5.imshow(loaded_numpy[1,1], cmap='gray')
-    x6.imshow(loaded_numpy[2,1], cmap='gray')
-    x7.imshow(loaded_numpy[3,1], cmap='gray')
-    x8.imshow(loaded_numpy[4,1], cmap='gray')
+    return x_train, y_train
+    # Save for later
+    """
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_subplot(4,2,1)
+    ax.imshow(loaded_numpy[0,0], cmap='gray')
+    ax = fig.add_subplot(4,2,3)
+    ax.imshow(loaded_numpy[1,0], cmap='gray')
+    ax = fig.add_subplot(4,2,5)
+    ax.imshow(loaded_numpy[2,0], cmap='gray')
+    ax = fig.add_subplot(4,2,7)
+    ax.imshow(loaded_numpy[3,0], cmap='gray')
+
+    ax = fig.add_subplot(4,2,2)
+    ax.imshow(loaded_numpy[0,1], cmap='gray')
+    ax = fig.add_subplot(4,2,4)
+    ax.imshow(loaded_numpy[1,1], cmap='gray')
+    ax = fig.add_subplot(4,2,6)
+    ax.imshow(loaded_numpy[2,1], cmap='gray')
+    ax = fig.add_subplot(4,2,8)
+    ax.imshow(loaded_numpy[3,1], cmap='gray')
+
+    plt.tight_layout()
+    plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(4,2,1)
+    ax.imshow(x_train[0,8][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,3)
+    ax.imshow(x_train[0,9][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,5)
+    ax.imshow(x_train[0,10][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,7)
+    ax.imshow(y_train[0,0][:, :, 0], cmap='gray')
+
+    ax = fig.add_subplot(4,2,2)
+    ax.imshow(x_train[8,8][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,4)
+    ax.imshow(x_train[8,9][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,6)
+    ax.imshow(x_train[8,10][:, :, 0], cmap='gray')
+    ax = fig.add_subplot(4,2,8)
+    ax.imshow(y_train[8,0][:, :, 0], cmap='gray')
+
     plt.tight_layout()
     plt.show()
     quit()
+    """
 
 
 def load_data(data_path, sequence_length, no_sequences=None):
