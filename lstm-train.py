@@ -182,6 +182,7 @@ def main():
         quit()
     # Save the last model
     model_filename = os.path.join(args.output, 'saved_models', 'model--last--saved.hdf5')
+    write_to_summary("Training complete, saving last model as {model_filename}", print_green=True)
     model.save(model_filename)
 
 
