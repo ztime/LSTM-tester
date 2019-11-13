@@ -144,17 +144,18 @@ def generate_movies(n_samples=1200, n_frames=15):
 
 # Train the network
 print("Generate movies...")
-noisy_movies, shifted_movies = generate_movies(n_samples=1200)
+noisy_movies, shifted_movies = generate_movies(n_samples=10000)
 print("Training")
 model_filename = 'model--{epoch:02d}--{val_loss:.2f}.hdf5'
 model_callback = ModelCheckpoint(model_filename, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
 try:
     seq.fit(
-            noisy_movies[:1000],
-            shifted_movies[:1000],
+            noisy_movies,
+            shifted_movies,
             batch_size=10,
             epochs=300,
             validation_split=0.05,
+            callbacks=[model_callback],
             # callbacks=[batch_metrics],
             )
     # seq.fit(noisy_movies[:2], shifted_movies[:2], batch_size=1, epochs=1, validation_split=0.05)
