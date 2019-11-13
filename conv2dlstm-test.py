@@ -2,8 +2,11 @@ from keras.models import Sequential
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
+from keras.callbacks import Callback
 import numpy as np
 import pylab as plt
+import os
+import copy
 
 # We create a layer which take as input movies of shape
 # (n_frames, width, height, channels) and returns a movie
@@ -30,7 +33,58 @@ seq.add(BatchNormalization())
 seq.add(Conv3D(filters=1, kernel_size=(3, 3, 3),
     activation='sigmoid',
     padding='same', data_format='channels_last'))
-seq.compile(loss='binary_crossentropy', optimizer='adadelta')
+# seq.compile(loss='binary_crossentropy', optimizer='adadelta')
+class BatchMetrics(Callback):
+
+    def __init__(self, file_path):
+        self.file_path = file_path
+        super().__init__()
+
+    def on_batch_end(self, batch, loss):
+        # We remove 'batch' and 'size' since
+        # they are not relevant
+        loss_dict = copy.copy(loss)
+        loss_dict.pop('batch')
+        loss_dict.pop('size')
+        if not os.path.isfile(self.file_path):
+            # It is our first pass! Create the file
+            # and add headers
+            with open(self.file_path, 'w') as f:
+                f.write('batch\t')
+                for key in loss_dict:
+                    f.write(f'{key}\t')
+                f.write('\n')
+        # Now we can print every line
+        with open(self.file_path, 'a') as f:
+            f.write(f'{batch}\t')
+            for key in loss_dict:
+                f.write(f'{loss_dict[key]}\t')
+            f.write('\n')
+        # Done
+
+batch_file = os.path.join('Metrics-each-batch-lstmconv2d.log')
+batch_metrics = BatchMetrics(batch_file)
+
+seq.compile(
+        loss='binary_crossentropy',
+        optimizer='adadelta',
+        metrics=[
+            'accuracy',
+            'mean_squared_error',
+            'mean_absolute_error',
+            'mean_absolute_percentage_error',
+            'mean_squared_logarithmic_error',
+            'squared_hinge',
+            'hinge',
+            'logcosh',
+            'huber_loss',
+            'sparse_categorical_crossentropy',
+            'binary_crossentropy',
+            'kullback_leibler_divergence',
+            'poisson',
+            'cosine_proximity',
+            ]
+        )
 
 
 # Artificial data generation:
@@ -92,7 +146,13 @@ print("Generate movies...")
 noisy_movies, shifted_movies = generate_movies(n_samples=1200)
 print("Training")
 try:
-    seq.fit(noisy_movies[:1000], shifted_movies[:1000], batch_size=10, epochs=300, validation_split=0.05)
+    seq.fit(
+            noisy_movies[:1000],
+            shifted_movies[:1000],
+            batch_size=10,
+            epochs=300,
+            validation_split=0.05,
+            callbacks=[batch_metrics])
     # seq.fit(noisy_movies[:2], shifted_movies[:2], batch_size=1, epochs=1, validation_split=0.05)
 except KeyboardInterrupt as e:
     print("Interrupted, saving model!")
@@ -125,19 +185,19 @@ for i in range(15):
     ax_model = fig.add_subplot(121)
 
     if i >= 7:
-        ax_model.text(1, 3, 'Predictions !', fontsize=20, color='w')
+        ax_model.text(1, 3, 'Predictions', fontsize=15, color='w')
     else:
-        ax_model.text(1, 3, 'Initial trajectory', fontsize=20)
+        ax_model.text(1, 3, 'Initial trajectory', fontsize=15, color='w')
 
     ax_model.imshow(track[i, ::, ::, 0])
 
     ax_gt = fig.add_subplot(122)
-    ax_gt.text(1, 3, 'Ground truth', fontsize=20)
+    ax_gt.text(1, 3, 'Ground truth', fontsize=15, color='w')
 
     toplot = track2[i, ::, ::, 0]
     if i >= 2:
         toplot = shifted_movies[which][i - 1, ::, ::, 0]
 
-    plt.imshow(toplot, cmap='gray')
+    plt.imshow(toplot)
     plt.savefig('%i_animate.png' % (i + 1))
     print(f"Saving image {i}")
