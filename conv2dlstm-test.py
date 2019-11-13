@@ -2,7 +2,7 @@ from keras.models import Sequential
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
-from keras.callbacks import Callback
+from keras.callbacks import Callback, ModelCheckpoint
 import numpy as np
 import pylab as plt
 import os
@@ -66,23 +66,24 @@ batch_file = os.path.join('Metrics-each-batch-lstmconv2d.log')
 batch_metrics = BatchMetrics(batch_file)
 
 seq.compile(
-        loss='binary_crossentropy',
+        # loss='binary_crossentropy',
+        loss='mse',
         optimizer='adadelta',
         metrics=[
             'accuracy',
-            'mean_squared_error',
-            'mean_absolute_error',
-            'mean_absolute_percentage_error',
-            'mean_squared_logarithmic_error',
-            'squared_hinge',
-            'hinge',
-            'logcosh',
-            'huber_loss',
-            'sparse_categorical_crossentropy',
-            'binary_crossentropy',
-            'kullback_leibler_divergence',
-            'poisson',
-            'cosine_proximity',
+            # 'mean_squared_error',
+            # 'mean_absolute_error',
+            # 'mean_absolute_percentage_error',
+            # 'mean_squared_logarithmic_error',
+            # 'squared_hinge',
+            # 'hinge',
+            # 'logcosh',
+            # # 'huber_loss',
+            # 'sparse_categorical_crossentropy',
+            # 'binary_crossentropy',
+            # 'kullback_leibler_divergence',
+            # 'poisson',
+            # 'cosine_proximity',
             ]
         )
 
@@ -145,6 +146,8 @@ def generate_movies(n_samples=1200, n_frames=15):
 print("Generate movies...")
 noisy_movies, shifted_movies = generate_movies(n_samples=1200)
 print("Training")
+model_filename = 'model--{epoch:02d}--{val_loss:.2f}.hdf5'
+model_callback = ModelCheckpoint(model_filename, monitor='val_loss', verbose=1, save_best_only=True, mode='auto')
 try:
     seq.fit(
             noisy_movies[:1000],
@@ -152,7 +155,8 @@ try:
             batch_size=10,
             epochs=300,
             validation_split=0.05,
-            callbacks=[batch_metrics])
+            # callbacks=[batch_metrics],
+            )
     # seq.fit(noisy_movies[:2], shifted_movies[:2], batch_size=1, epochs=1, validation_split=0.05)
 except KeyboardInterrupt as e:
     print("Interrupted, saving model!")
