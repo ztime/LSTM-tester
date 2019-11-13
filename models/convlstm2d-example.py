@@ -4,6 +4,7 @@ from keras.optimizers import Adam, RMSprop
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
+import copy
 
 MODEL_OVERRIDES = {
         "sequence_length": 12,
@@ -33,20 +34,36 @@ def get_model(sequence_length, img_width, img_height):
 
 def data_prepare(x_train, y_train):
     """
-    For this model we have two outputs so we need two different
-    outputs for the loss function to use.
+    We are actually preciting sequences here, so we need to adjust this a bit
 
-    The first output is for decoder 1 which is the reverse of the input sequence
-    ALL of which has been seen in the training data
-    Second output is for decoder 2 which is the next frame in the sequence
-    which is not in the training data
+    Very wierd
 
-    x_train will remain the same for the data, so no need to touch that
     """
     total_sequences, sequence_length, img_width, img_height, img_channels = x_train.shape
-    y_train = np.reshape(y_train, (total_sequences, img_width, img_height, img_channels))
+    y_train_new = np.zeros((total_sequences, sequence_length, img_width, img_height, img_channels))
+    for sequence in range(total_sequences):
+        # Shift all frames so that the first frame ends up last
+        # i.e [1, 2, 3] - > [2, 3, 1]
+        for i in range(sequence_length - 1):
+            y_train_new[sequence][i] = copy.copy(x_train[sequence][i + 1])
+        # replace the last frame with prediction  [2, 3, 1] -> [2, 3, 4]
+        y_train_new[sequence][sequence_length - 1] = y_train[sequence]
 
-    return x_train, y_train
+    # import matplotlib.pyplot as plt
+    # plt.tight_layout()
+    # fig1 = plt.figure(1)
+    # row, col = 2, 12
+    # for i in range(0, row * col):
+        # ax = fig1.add_subplot(row, col, i + 1)
+        # if i > 11:
+            # ax.imshow(y_train_new[0,i % 12][:,:,0], cmap='gray')
+        # else:
+            # ax.imshow(x_train[0,i % 12][:,:,0], cmap='gray')
+    # fig1.show()
+    # input()
+    # quit()
+
+    return x_train, y_train_new
 
 
 def _build_network(sequence_length, img_width, img_height):
