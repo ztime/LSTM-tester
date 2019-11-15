@@ -6,8 +6,8 @@ from keras import backend as K
 import numpy as np
 
 MODEL_OVERRIDES = {
-        "sequence_length": 12,
-        "batchsize": 1,
+        "sequence_length": 10,
+        "batchsize": 5,
         "data_prepare": True,
         }
 
@@ -22,9 +22,11 @@ def get_description():
 
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
+    # rms = RMSprop(learning_rate=1.e-3, rho=0.9)
+    rms = RMSprop()
     model.compile(
             loss='binary_crossentropy',
-            optimizer='adadelta',
+            optimizer=rms,
             metrics=[
                 'accuracy',
                 'mean_squared_error',
@@ -55,7 +57,7 @@ def _build_network(sequence_length, img_width, img_height):
     model.add(
             ConvLSTM2D(
                 filters=128,
-                kernel_size=(3,3),
+                kernel_size=(5,5),
                 input_shape=(sequence_length, img_width, img_height, 1),
                 padding='same',
                 return_sequences=True,
@@ -63,16 +65,16 @@ def _build_network(sequence_length, img_width, img_height):
         )
     model.add(
             ConvLSTM2D(
-                filters=128,
-                kernel_size=(3,3),
+                filters=64,
+                kernel_size=(5,5),
                 padding='same',
                 return_sequences=True,
                 )
         )
     model.add(
             ConvLSTM2D(
-                filters=128,
-                kernel_size=(3,3),
+                filters=64,
+                kernel_size=(5,5),
                 padding='same',
                 return_sequences=True,
                 )

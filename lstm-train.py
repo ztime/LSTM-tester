@@ -172,6 +172,7 @@ def main():
                 batch_size=args.batchsize,
                 epochs=args.epochs,
                 validation_split=args.validation_split,
+                shuffle=True,
                 callbacks=callbacks,
                 )
     except KeyboardInterrupt:
