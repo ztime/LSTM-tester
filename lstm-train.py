@@ -108,6 +108,7 @@ def main():
         plot_file = os.path.join(args.output, f"{args.prefix}-plot-model.png")
         plot_model(model, show_shapes=True, to_file=plot_file)
         cprint(f"Saved model image to {plot_file}!", print_green=True)
+        quit()
     # Setup callbacks
     # Model saver
     model_folder = os.path.join(args.output, 'saved_models')
@@ -210,17 +211,26 @@ def load_data_moving_mnist(sequence_length, no_sequences=None):
     y_train = np.zeros((no_sequences, 1, width, height, 1))
     # Wierd-ass format (frame, sequence, width, height) !?
     # Reformat to sane human values (sequence, frame, width, height)
-    # and shape the sequence length at the same time
+    # and shape the sequence length at the same time 
+    # also add an extra dimension 
     for seq_count in range(no_sequences):
         for frame_count in range(sequence_length):
-            x_train[seq_count, frame_count] = np.expand_dims(loaded_numpy[frame_count, seq_count], axis=3)
-        y_train[seq_count, 0] = np.expand_dims(loaded_numpy[frame_count + 1, seq_count], axis=3)
+            x_train[seq_count, frame_count] = loaded_numpy[frame_count, seq_count, ::, ::, np.newaxis]
+        y_train[seq_count, 0] = loaded_numpy[frame_count + 1, seq_count, ::, ::, np.newaxis]
+
+    # Adjust the values
+    x_train /= 255.0
+    x_train[x_train >= .5] = 1.
+    x_train[x_train < .5] = 0.
+    y_train /= 255.0
+    y_train[y_train >= .5] = 1.
+    y_train[y_train < .5] = 0.
 
     return x_train, y_train
     # Save for later
     """
     import matplotlib.pyplot as plt
-    fig = plt.figure()
+    fig = plt.figure(1)
     ax = fig.add_subplot(4,2,1)
     ax.imshow(loaded_numpy[0,0], cmap='gray')
     ax = fig.add_subplot(4,2,3)
@@ -242,22 +252,22 @@ def load_data_moving_mnist(sequence_length, no_sequences=None):
     plt.tight_layout()
     plt.show()
 
-    fig = plt.figure()
+    fig = plt.figure(2)
     ax = fig.add_subplot(4,2,1)
-    ax.imshow(x_train[0,8][:, :, 0], cmap='gray')
+    ax.imshow(x_train[0,7][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,3)
-    ax.imshow(x_train[0,9][:, :, 0], cmap='gray')
+    ax.imshow(x_train[0,8][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,5)
-    ax.imshow(x_train[0,10][:, :, 0], cmap='gray')
+    ax.imshow(x_train[0,9][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,7)
     ax.imshow(y_train[0,0][:, :, 0], cmap='gray')
 
     ax = fig.add_subplot(4,2,2)
-    ax.imshow(x_train[8,8][:, :, 0], cmap='gray')
+    ax.imshow(x_train[8,7][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,4)
-    ax.imshow(x_train[8,9][:, :, 0], cmap='gray')
+    ax.imshow(x_train[8,8][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,6)
-    ax.imshow(x_train[8,10][:, :, 0], cmap='gray')
+    ax.imshow(x_train[8,9][:, :, 0], cmap='gray')
     ax = fig.add_subplot(4,2,8)
     ax.imshow(y_train[8,0][:, :, 0], cmap='gray')
 
