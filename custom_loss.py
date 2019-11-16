@@ -26,6 +26,13 @@ def norm_loss(y_true, y_pred):
 def combine_count_and_norm_loss(y_true, y_pred):
     return count_pixel_loss(y_true, y_pred) + norm_loss(y_true, y_pred)
 
+def huber_loss(y_true, y_pred, delta=1.0):
+    error = y_pred - y_true
+    abs_error = K.abs(error)
+    quadratic = K.minimum(abs_error, delta)
+    linear = abs_error - quadratic
+    return 0.5 * K.square(quadratic) + delta * linear
+
 def combine_euclidian_and_pixel_count(y_true, y_pred):
     eu = euclidian_loss(y_true, y_pred)
     cp = count_pixel_loss(y_true, y_pred)

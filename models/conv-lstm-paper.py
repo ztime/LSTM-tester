@@ -3,6 +3,9 @@ from keras.models import Sequential, Model
 from keras.optimizers import Adam, RMSprop
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
+
+from custom_loss import huber_loss
+import keras
 import numpy as np
 import copy
 
@@ -19,9 +22,11 @@ def get_description():
 
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
-    rms = RMSprop(learning_rate=1.e-3, rho=0.9)
+    rms = RMSprop()
+    # rms = RMSprop(learning_rate=1.e-3, rho=0.9)
     model.compile(
-            loss='binary_crossentropy',
+            # loss='binary_crossentropy',
+            loss=huber_loss,
             optimizer=rms,
             metrics=[
                 'accuracy',
