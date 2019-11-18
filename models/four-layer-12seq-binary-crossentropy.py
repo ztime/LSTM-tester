@@ -5,8 +5,10 @@ from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
 
+from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_loss, huber_and_count_pixel_loss
+
 MODEL_OVERRIDES = {
-        "sequence_length": 10,
+        "sequence_length": 19,
         "batchsize": 5,
         "data_prepare": True,
         }
@@ -25,8 +27,13 @@ def get_model(sequence_length, img_width, img_height):
     # rms = RMSprop(learning_rate=1.e-3, rho=0.9)
     rms = RMSprop()
     model.compile(
-            loss='binary_crossentropy',
-            optimizer=rms,
+            loss=huber_and_count_pixel_loss,
+            # loss='binary_crossentropy',
+            # loss=cross_entropy_from_convlstm,
+            # loss=[count_pixel_loss,'binary_crossentropy'],
+            # loss=huber_loss,
+            # optimizer=rms,
+            optimizer='adam',
             metrics=[
                 'accuracy',
                 'mean_squared_error',

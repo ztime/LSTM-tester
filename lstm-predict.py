@@ -1,4 +1,5 @@
 from keras.models import load_model
+import keras
 
 from PIL import Image
 
@@ -43,6 +44,7 @@ def main():
     cprint("Loading model...")
     model = load_keras_model(args.model)
     cprint("Loaded model!", print_green=True)
+    model.summary()
     check_folder(args.output, args.yes_to_all)
     seq_length, img_width, img_height, img_channels = get_dimensions_from_model(model)
 
@@ -78,10 +80,11 @@ def main():
             cprint(f"Generating frame {i}...")
         # Add axis in front, as the predict function expects a sequence (like during training)
         new_frame = model.predict(seed_data[np.newaxis, ::, ::, ::, ::])
-        if args.use_output_no is not None:
-            new_frame = new_frame[args.use_output_no]
+        # if args.use_output_no is not None:
+            # new_frame = new_frame[args.use_output_no]
         # Remove the extra dimenson given by predict if needed
-        if len(new_frame.shape) != 4:
+        print(keras.backend.shape(new_frame))
+        if len(new_frame.shape) != 4 and False:
             new = new_frame[::,-1,::,::,::]
         else:
             new = new_frame
@@ -213,9 +216,19 @@ def load_moving_mnist(sequence_index, sequence_length):
     """
     MOVING_MNIST_PATH = "mnist_test_seq.npy"
     loaded_numpy = np.load(MOVING_MNIST_PATH)
-    sequence = loaded_numpy[:sequence_length, sequence_index]
+    _, _, width, height = loaded_numpy.shape
+    sequence = np.zeros((sequence_length, width, height))
+    for i in range(sequence_length):
+        sequence[i] = loaded_numpy[i, sequence_index]
+
+    print(f"sequence shape:{sequence.shape}")
     # Adjust channel dimensions
-    sequence = np.expand_dims(sequence, axis=3)
+    sequence = sequence[::, ::, ::, np.newaxis]
+
+    sequence /= 255.0
+    sequence[sequence >= .5] = 1.
+    sequence[sequence < .5] = 0.
+
     return sequence
 
 def get_dimensions_from_model(model):

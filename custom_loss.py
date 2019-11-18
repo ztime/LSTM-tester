@@ -13,10 +13,17 @@ def count_pixel_loss(y_true, y_pred):
     # y_true = K.update_sub(K.sum(y_true), K.sum(y_pred))
     # return y_true
     # y_true = K.update_sub(K.sum(y_true), K.sum(y_pred))
-    return K.sum(y_true) - K.sum(y_pred)
+    return K.abs(K.sum(y_true) - K.sum(y_pred))
 
 def log_count_pixel_loss(y_true, y_pred):
     return K.log(count_pixel_loss(y_true, y_pred))
+
+def cross_entropy_from_convlstm(y_true, y_pred):
+    multiplication = y_true * K.log(y_pred) + (1.0 - y_true) * K.log(1.0 - y_pred)
+    return - K.sum(multiplication)
+
+def huber_and_count_pixel_loss(y_true, y_pred):
+    return huber_loss(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
 
 def norm_loss(y_true, y_pred):
     n_y_t = tf.linalg.norm(y_true)

@@ -183,8 +183,8 @@ def main():
         write_to_summary(f"Saved model to {model_filename}", print_green=True)
         quit()
     # Save the last model
-    model_filename = os.path.join(args.output, 'saved_models', 'model--last--saved.hdf5')
-    write_to_summary("Training complete, saving last model as {model_filename}", print_green=True)
+    model_filename = os.path.join(args.output, 'saved_models', f'model--last--{args.epochs}--.hdf5')
+    write_to_summary(f"Training complete, saving last model as {model_filename}", print_green=True)
     model.save(model_filename)
 
 
@@ -221,9 +221,9 @@ def load_data_moving_mnist(sequence_length, no_sequences=None):
 
     # Adjust the values
     x_train /= 255.0
+    y_train /= 255.0
     x_train[x_train >= .5] = 1.
     x_train[x_train < .5] = 0.
-    y_train /= 255.0
     y_train[y_train >= .5] = 1.
     y_train[y_train < .5] = 0.
 
