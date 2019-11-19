@@ -31,6 +31,7 @@ def main():
     parser.add_argument('-y', '--yes_to_all', action='store_true')
     parser.add_argument('--use_moving_mnist', action='store_true')
     parser.add_argument('--use_output_no', type=int, help='If model has several outputs, use this index')
+    parser.add_argument('--clip_frames', action='store_true', help="Clip frames with .5 > = 1 and < .5 = 0")
 
     args = parser.parse_args()
 
@@ -83,8 +84,7 @@ def main():
         # if args.use_output_no is not None:
             # new_frame = new_frame[args.use_output_no]
         # Remove the extra dimenson given by predict if needed
-        print(keras.backend.shape(new_frame))
-        if len(new_frame.shape) != 4 and False:
+        if len(new_frame.shape) != 4:
             new = new_frame[::,-1,::,::,::]
         else:
             new = new_frame
@@ -93,6 +93,11 @@ def main():
         # often when max is less than that, the frame is empty
         if max_in_frame < 0.02:
             cprint(f"Warning: Max in frame {i}: {max_in_frame}", print_red=True)
+        # Clip the frame if that settings is active
+        if args.clip_frames:
+            new[ new >= .5 ] = 1.
+            new[ new < .5 ] = 0.
+
         # Remove first frame so our window always is seq_length
         seed_data = np.delete(seed_data, 0 , 0) # removing first frame
         # Add new frame, and save it 

@@ -9,20 +9,20 @@ from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_los
 
 MODEL_OVERRIDES = {
         "sequence_length": 19,
-        "batchsize": 5,
+        "batchsize": 2,
         "data_prepare": True,
         }
 
 def get_description():
     desc = ["4 layers:"]
-    desc.append("convlstm - 128 filters")
     desc.append("convlstm - 64 filters")
-    desc.append("convlstm - 64 filters")
+    desc.append("convlstm - 32 filters")
+    desc.append("convlstm - 32 filters")
     desc.append("convlstm - 1 filters")
     desc.append("Huber and count pixel loss")
     desc.append("optimizer is adam")
-    desc.append("batchsize 5 and seq length 19")
-    desc.append("Testing new tensorboard settings")
+    desc.append(f"batchsize {MODEL_OVERRIDES['batchsize']} and seq length {MODEL_OVERRIDES['sequence_length']}")
+    desc.append("Smaller filter because memory limits")
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
@@ -67,6 +67,7 @@ def _build_network(sequence_length, img_width, img_height):
     model.add(
             ConvLSTM2D(
                 filters=128,
+                # filters=64,
                 kernel_size=(5,5),
                 input_shape=(sequence_length, img_width, img_height, 1),
                 padding='same',
@@ -76,6 +77,7 @@ def _build_network(sequence_length, img_width, img_height):
     model.add(
             ConvLSTM2D(
                 filters=64,
+                # filters=32,
                 kernel_size=(5,5),
                 padding='same',
                 return_sequences=True,
@@ -84,6 +86,7 @@ def _build_network(sequence_length, img_width, img_height):
     model.add(
             ConvLSTM2D(
                 filters=64,
+                # filters=32,
                 kernel_size=(5,5),
                 padding='same',
                 return_sequences=True,

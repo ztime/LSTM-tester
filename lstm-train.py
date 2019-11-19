@@ -120,7 +120,15 @@ def main():
     # Tensorboard
     if args.save_tensorboard:
         tensorboard_filepath = os.path.join(args.output, 'tensorboard_logs')
-        tensorboard_callback = TensorBoard(log_dir=tensorboard_filepath, histogram_freq=0, write_graph=True, write_images=True)
+        tensorboard_callback = TensorBoard(
+                log_dir=tensorboard_filepath,
+                # histogram_freq=2,
+                # batch_size=1,
+                # write_grads=True,
+                write_graph=True,
+                write_images=True,
+                # update_freq='epoch',
+                )
         callbacks.append(tensorboard_callback)
     # Save metrics after each batch to file
     if args.save_metrics_each_batch is not None:
