@@ -13,7 +13,7 @@ def main():
     parser.add_argument('--use_mnist', action='store_true')
     parser.add_argument('--frames_to_use', type=int, default=1000)
     parser.add_argument('--view_high_frames', action='store_true')
-    parser.add_argument('--high_frame_level', type=int, default=100)
+    parser.add_argument('--high_frame_level', type=int, default=10000)
     parser.add_argument('--show_histograms', action='store_true')
     parser.add_argument('--histogram_frames', default='0-2')
     parser.add_argument('--show_frames', action='store_true')
@@ -28,6 +28,7 @@ def main():
         print(f"Loading blob {args.datafile}...")
         frames = load_blob(args.datafile)
     print("Done.")
+    print(f"Shape of data: {frames.shape}")
 
     pixels_per_frame = []
     for frame in frames:
