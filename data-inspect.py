@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--view_high_frames', action='store_true')
     parser.add_argument('--high_frame_level', type=int, default=10000)
     parser.add_argument('--show_histograms', action='store_true')
+    parser.add_argument('--show_histograms_manhattan', action='store_true')
     parser.add_argument('--histogram_frames', default='0-2')
     parser.add_argument('--show_frames', action='store_true')
     parser.add_argument('--show_frames_index', default='0-10')
@@ -71,6 +72,20 @@ def main():
             plt.plot(p_x, p_y)
         print("Done")
 
+    if args.show_histograms_manhattan:
+        print("Viewing manhattan histograms...")
+        # Parse argument to know what frames
+        start_frame = args.histogram_frames.split('-')[0]
+        end_frame = args.histogram_frames.split('-')[-1]
+        start_frame = int(start_frame)
+        end_frame = int(end_frame)
+        fig_pixel_manhattan = plt.figure(3)
+        plt.title(f"Manhattan Histogram for frame {args.histogram_frames}")
+        for frame in range(start_frame, end_frame + 1):
+            p_x, p_y = pixel_wise_distances_manhattan(frames[frame])
+            plt.plot(p_x, p_y)
+        print("Done")
+
     if args.show_frames:
         # Parse argument to know what frames
         print("Viewing frames...")
@@ -91,7 +106,7 @@ def main():
             dim_for_sub_1 = int(args.show_frames_grid.split('x')[0])
             dim_for_sub_2 = int(args.show_frames_grid.split('x')[-1])
         # Lets do this!
-        frames_fig = plt.figure(3)
+        frames_fig = plt.figure(4)
         frames_fig.tight_layout()
         sub_counter = 1
         for f in frames_as_list:
@@ -177,6 +192,40 @@ def pixel_wise_distances(frame):
         else:
             y.append(distances[i])
 
+    return x, y
+
+def pixel_wise_distances_manhattan(frame):
+    """
+    Counts the distance between all pixels in frame
+    with manhattan distance
+    """
+    pixel_locations = []
+    rows, cols = frame.shape
+    for i in range(rows):
+        for j in range(cols):
+            if frame[i][j] == 1:
+                pixel_locations.append((i,j))
+    # Maximized range from 0,0 -> rows, cols
+    max_length = rows + cols
+    distances = {}
+    for pixel_index in range(len(pixel_locations)):
+        x_1, x_2 = pixel_locations[pixel_index]
+        for other_pixel in range(pixel_index + 1, len(pixel_locations)):
+            y_1, y_2 = pixel_locations[other_pixel]
+            dist = abs(x_1 - y_1) + abs(x_2 - y_2)
+            if dist not in distances:
+                distances[dist] = 0
+            distances[dist] += 1
+    # lists for the plot
+    x = []
+    y = []
+    # No zero indexed array, so we use + 1
+    for i in range(1, max_length + 1):
+        x.append(i)
+        if i not in distances:
+            y.append(0)
+        else:
+            y.append(distances[i])
     return x, y
 
 def euclidian(x_1, x_2, y_1, y_2):
