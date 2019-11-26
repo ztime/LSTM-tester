@@ -6,6 +6,41 @@ import tensorflow as tf
 def euclidian_loss(y_true, y_pred):
     return K.sqrt(K.sum(K.square(y_true - y_pred)))
 
+class HackySacky:
+    def __init__(self, name):
+        self.positions = []
+        self.x_counter = 0
+        self.y_counter = 0
+        self.x_bound = 64
+        self.y_bound = 64
+        self.name = name
+
+        self.file = f"LOGGYLOGLOG-{name}.log"
+        self.write_to_file("/////////////////////////////////////////////")
+
+    def write_to_file(self, s):
+        with open(self.file, 'a') as f:
+            f.write(f"{s}\n")
+
+    def ping(self, value):
+        self.write_to_file(f"x_counter: {self.x_counter} value:{value}")
+        # self.write_to_file(f"{value[0,0,0]}")
+        # self.write_to_file(f"{K.variable(value)}")
+        self.x_counter += 1
+        return value
+
+def new_c_loss(y_true, y_pred):
+    y_t_hacky = HackySacky('y_true')
+    y_p_hacky = HackySacky('y_pred')
+    y_t = K.get_value(y_true)
+    y_t_hacky.write_to_file(y_t)
+    # y_t_n = K.zeros_like(y_true)
+    # K.map_fn(y_t_hacky.ping, y_true[0])
+    # K.map_fn(y_p_hacky.ping, y_pred[0])
+    y_true = tf.map_fn(y_t_hacky.ping, y_true)
+    y_pred = tf.map_fn(y_p_hacky.ping, y_pred)
+    return K.abs(K.sum(y_true) - K.sum(y_pred))
+
 def count_pixel_loss(y_true, y_pred):
     """
     Assumues that y_true and y_pred are images
