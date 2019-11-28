@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--show_frames', action='store_true')
     parser.add_argument('--show_frames_index', default='0-10')
     parser.add_argument('--show_frames_grid')
+    parser.add_argument('--calc_percentage_pixels', action='store_true')
     args = parser.parse_args()
 
     if args.use_mnist:
@@ -122,6 +123,20 @@ def main():
         # plt.title(f"Display of frames {args.show_frames_index}")
         # plt.plot(range(len(pixels_per_frame)), pixels_per_frame)
         print("Done")
+
+    if args.calc_percentage_pixels:
+        print("Calculating percentage white pixels...")
+        # Shape[1],shape[2] = width,height of frames
+        pixels_per_frame = frames.shape[1] * frames.shape[2]
+        # shape[0] number of images
+        total_pixels = pixels_per_frame * frames.shape[0]
+        count_white_pixels = 0
+        for frame in frames:
+            count_white_pixels += np.sum(frame)
+        percent_non_black = float(count_white_pixels) / float(total_pixels)
+        print(f"Total pixels: {total_pixels} Non-black pixels: {count_white_pixels}")
+        print(f"In {frames.shape[0]} frames {percent_non_black:.5f} pixels are non-black")
+
 
     plt.show()
 
