@@ -23,6 +23,27 @@ def get_description():
     desc.append("optimizer is adam")
     desc.append("batchsize 5 and seq length 19")
     desc.append("Testing new tensorboard settings")
+
+    copy_settings = """
+    rms = RMSprop()
+    model.compile(
+            loss=huber_and_count_pixel_loss,
+            # loss='binary_crossentropy',
+            # loss=cross_entropy_from_convlstm,
+            # loss=[count_pixel_loss,'binary_crossentropy'],
+            # loss=huber_loss,
+            # optimizer=rms,
+            optimizer=rms,
+            metrics=[
+                'accuracy',
+                'mean_squared_error',
+                'binary_crossentropy',
+                ]
+            )
+    return model
+    """
+    desc.append(copy_settings)
+
     return '\n'.join(desc)
 
 def get_model(sequence_length, img_width, img_height):
@@ -36,10 +57,11 @@ def get_model(sequence_length, img_width, img_height):
             # loss=[count_pixel_loss,'binary_crossentropy'],
             # loss=huber_loss,
             # optimizer=rms,
-            optimizer='adam',
+            optimizer=rms,
             metrics=[
                 'accuracy',
                 'mean_squared_error',
+                'binary_crossentropy',
                 ]
             )
     return model
