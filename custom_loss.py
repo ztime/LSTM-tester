@@ -57,11 +57,21 @@ def cross_entropy_from_convlstm(y_true, y_pred):
     multiplication = y_true * K.log(y_pred) + (1.0 - y_true) * K.log(1.0 - y_pred)
     return - K.sum(multiplication)
 
+def binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
+    y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred
+    y_true = K.cast(y_true, y_pred.dtype)
+    return K.mean(
+        K.binary_crossentropy(y_true, y_pred, from_logits=from_logits), axis=-1
+    )
+
 def huber_and_count_pixel_loss(y_true, y_pred):
     return huber_loss(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
 
 def cross_convlstm_and_count_pixel_loss(y_true, y_pred):
     return cross_entropy_from_convlstm(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
+
+def bin_cross_and_count_pixel_loss(y_true, y_pred):
+    return binary_crossentropy(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
 
 def norm_loss(y_true, y_pred):
     n_y_t = tf.linalg.norm(y_true)
