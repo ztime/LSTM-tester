@@ -5,11 +5,11 @@ from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
 
-from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_loss, huber_and_count_pixel_loss
+from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_loss, huber_and_count_pixel_loss, cross_convlstm_and_count_pixel_loss
 
 MODEL_OVERRIDES = {
         "sequence_length": 19,
-        "batchsize": 5,
+        # "batchsize": 5, # batchsize > 2 is to much for using real data
         "data_prepare": True,
         }
 
@@ -19,15 +19,11 @@ def get_description():
     desc.append("convlstm - 64 filters")
     desc.append("convlstm - 64 filters")
     desc.append("convlstm - 1 filters")
-    desc.append("Huber and count pixel loss")
-    desc.append("optimizer is adam")
-    desc.append("batchsize 5 and seq length 19")
-    desc.append("Testing new tensorboard settings")
-
     copy_settings = """
     rms = RMSprop()
     model.compile(
-            loss=huber_and_count_pixel_loss,
+            loss=cross_convlstm_and_count_pixel_loss,
+            # loss=huber_and_count_pixel_loss,
             # loss='binary_crossentropy',
             # loss=cross_entropy_from_convlstm,
             # loss=[count_pixel_loss,'binary_crossentropy'],
@@ -48,10 +44,10 @@ def get_description():
 
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
-    # rms = RMSprop(learning_rate=1.e-3, rho=0.9)
     rms = RMSprop()
     model.compile(
-            loss=huber_and_count_pixel_loss,
+            loss=cross_convlstm_and_count_pixel_loss,
+            # loss=huber_and_count_pixel_loss,
             # loss='binary_crossentropy',
             # loss=cross_entropy_from_convlstm,
             # loss=[count_pixel_loss,'binary_crossentropy'],

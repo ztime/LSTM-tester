@@ -60,6 +60,9 @@ def cross_entropy_from_convlstm(y_true, y_pred):
 def huber_and_count_pixel_loss(y_true, y_pred):
     return huber_loss(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
 
+def cross_convlstm_and_count_pixel_loss(y_true, y_pred):
+    return cross_entropy_from_convlstm(y_true, y_pred) + count_pixel_loss(y_true, y_pred)
+
 def norm_loss(y_true, y_pred):
     n_y_t = tf.linalg.norm(y_true)
     n_y_p = tf.linalg.norm(y_pred)
