@@ -157,3 +157,11 @@ def count_pixels(frame):
     rows, cols = frame.shape
     white_pixels = frame.sum()
     return white_pixels, int((rows * cols) - white_pixels)
+
+def hard_activation(x):
+    constant_point_five = K.constant(0.5)
+    constant_zero = K.constant(0.0)
+    constant_one = K.constant(1.0)
+    def f1(): return tf.multiply(x, 0)
+    def f2(): return tf.multiply(x, 1)
+    return tf.cond(tf.less(x,constant_point_five), f1, f2)
