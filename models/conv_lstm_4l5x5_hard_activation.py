@@ -6,7 +6,6 @@ from keras import backend as K
 import numpy as np
 
 from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_loss, huber_and_count_pixel_loss, bin_cross_and_count_pixel_loss
-from custom_loss import hard_activation
 
 MODEL_OVERRIDES = {
         "sequence_length": 19,
@@ -17,9 +16,9 @@ MODEL_OVERRIDES = {
 def get_description():
     desc = ["4 layers:"]
     desc.append("convlstm - 128 filters")
+    # desc.append("convlstm - 64 filters")
     desc.append("convlstm - 64 filters")
-    desc.append("convlstm - 64 filters")
-    desc.append("convlstm - 1 filters")
+    desc.append("conv3d - 1 filters")
     copy_settings = """
     rms = RMSprop()
     model.compile(
@@ -39,8 +38,7 @@ def get_description():
                 ]
             )
     return model
-
-    Model uses hard activation!!!!!!!!
+    Removing a middle layer
     """
     desc.append(copy_settings)
 
@@ -94,7 +92,6 @@ def _build_network(sequence_length, img_width, img_height):
                 input_shape=(sequence_length, img_width, img_height, 1),
                 padding='same',
                 return_sequences=True,
-                activation=hard_activation,
                 )
         )
     model.add(
@@ -103,30 +100,29 @@ def _build_network(sequence_length, img_width, img_height):
                 kernel_size=(5,5),
                 padding='same',
                 return_sequences=True,
-                activation=hard_activation,
                 )
         )
-    model.add(
-            ConvLSTM2D(
-                filters=64,
-                kernel_size=(5,5),
-                padding='same',
-                return_sequences=True,
-                activation=hard_activation,
-                )
-        )
+    # model.add(
+            # ConvLSTM2D(
+                # filters=64,
+                # kernel_size=(5,5),
+                # padding='same',
+                # return_sequences=True,
+                # # return_sequences=False,
+                # )
+        # )
     model.add(
             ConvLSTM2D(
                 filters=1,
                 kernel_size=(3,3),
                 padding='same',
                 return_sequences=False,
-                activation=hard_activation,
                 )
         )
     # model.add(
             # Conv3D(filters=1,
                 # kernel_size=(3,3,1),
+                # # kernel_size=(3,3,3),
                 # activation='sigmoid',
                 # padding='same',
                 # data_format='channels_last',
