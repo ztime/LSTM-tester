@@ -54,8 +54,18 @@ def log_count_pixel_loss(y_true, y_pred):
     return K.log(count_pixel_loss(y_true, y_pred))
 
 def cross_entropy_from_convlstm(y_true, y_pred):
-    multiplication = y_true * K.log(y_pred) + (1.0 - y_true) * K.log(1.0 - y_pred)
-    return - K.sum(multiplication)
+    test = HackySacky('test')
+    y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred
+    y_true = K.cast(y_true, y_pred.dtype)
+    # multiplication = (y_true * K.log(y_pred)) + ((1.0 - y_true) * K.log(1.0 - y_pred))
+    one = K.constant(1.0)
+    small = K.constant(0.1)
+    positive = y_true * K.log(y_pred) * small
+    negative = (one - y_true) * K.log(one - y_pred) * small
+    addition = positive + negative
+    negative_sum = - K.sum(addition)
+    # multiplication = tf.add(tf.multiply(y_true, tf.log(y_pred)), tf.multiply((1.0 - y_true), tf.log(1.0 - y_pred)))
+    return negative_sum
 
 def binary_crossentropy(y_true, y_pred, from_logits=False, label_smoothing=0):
     y_pred = K.constant(y_pred) if not K.is_tensor(y_pred) else y_pred

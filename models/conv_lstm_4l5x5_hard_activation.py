@@ -1,6 +1,6 @@
 from keras.layers import Input, LSTM, ConvLSTM2D, Conv3D, BatchNormalization
 from keras.models import Sequential, Model
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, RMSprop, SGD
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras import backend as K
 import numpy as np
@@ -8,8 +8,9 @@ import numpy as np
 from custom_loss import huber_loss, cross_entropy_from_convlstm, count_pixel_loss, huber_and_count_pixel_loss, bin_cross_and_count_pixel_loss
 
 MODEL_OVERRIDES = {
-        "sequence_length": 19,
-        # "batchsize": 5, # batchsize > 2 is to much for using real data
+        "sequence_length": 10,
+        # "batchsize": 10, # batchsize > 2 is to much for using real data
+        "batchsize": 2, # batchsize > 2 is to much for using real data
         "data_prepare": True,
         }
 
@@ -22,7 +23,8 @@ def get_description():
     copy_settings = """
     rms = RMSprop()
     model.compile(
-            loss=bin_cross_and_count_pixel_loss,
+            loss=cross_entropy_from_convlstm,
+            # loss=bin_cross_and_count_pixel_loss,
             # loss=cross_convlstm_and_count_pixel_loss,
             # loss=huber_and_count_pixel_loss,
             # loss='binary_crossentropy',
@@ -30,7 +32,8 @@ def get_description():
             # loss=[count_pixel_loss,'binary_crossentropy'],
             # loss=huber_loss,
             # optimizer=rms,
-            optimizer=rms,
+            # optimizer=rms,
+            optimizer='adam',
             metrics=[
                 'accuracy',
                 'mean_squared_error',
@@ -38,7 +41,8 @@ def get_description():
                 ]
             )
     return model
-    Removing a middle layer
+
+    three layers! Testing sequence length of 10 instead
     """
     desc.append(copy_settings)
 
@@ -47,7 +51,9 @@ def get_description():
 def get_model(sequence_length, img_width, img_height):
     model = _build_network(sequence_length, img_width, img_height)
     rms = RMSprop()
+    sgd = SGD(lr=0.00001, clipnorm=1.0)
     model.compile(
+            # loss=cross_entropy_from_convlstm,
             loss=bin_cross_and_count_pixel_loss,
             # loss=cross_convlstm_and_count_pixel_loss,
             # loss=huber_and_count_pixel_loss,
@@ -56,7 +62,8 @@ def get_model(sequence_length, img_width, img_height):
             # loss=[count_pixel_loss,'binary_crossentropy'],
             # loss=huber_loss,
             # optimizer=rms,
-            optimizer=rms,
+            # optimizer='adam',
+            optimizer=sgd,
             metrics=[
                 'accuracy',
                 'mean_squared_error',
@@ -84,41 +91,50 @@ def data_prepare(x_train, y_train):
 
 
 def _build_network(sequence_length, img_width, img_height):
-    model = Sequential()
-    model.add(
-            ConvLSTM2D(
-                filters=128,
-                kernel_size=(5,5),
-                input_shape=(sequence_length, img_width, img_height, 1),
-                padding='same',
-                return_sequences=True,
-                )
-        )
-    model.add(
-            ConvLSTM2D(
-                filters=64,
-                kernel_size=(5,5),
-                padding='same',
-                return_sequences=True,
-                )
-        )
+    with K.name_scope("input_layer"):
+        input_layer = Input(shape=(sequence_length, img_width, img_height, 1))
+    with K.name_scope("lstmfirst"):
+        first_lstm2d = ConvLSTM2D(filters=128, kernel_size=(5,5),padding='same', return_sequences=True)(input_layer)
+    with K.name_scope("lstmsecond"):
+        second_lstm2d = ConvLSTM2D(filters=64, kernel_size=(5,5),padding='same', return_sequences=True)(first_lstm2d)
+    with K.name_scope("output"):
+        output_lstm2d = ConvLSTM2D(filters=1, kernel_size=(3,3),padding='same', return_sequences=False)(second_lstm2d)
+    model = Model(inputs=input_layer, outputs=output_lstm2d)
+    # model = Sequential()
+    # model.add(
+            # ConvLSTM2D(
+                # filters=128,
+                # kernel_size=(5,5),
+                # input_shape=(sequence_length, img_width, img_height, 1),
+                # padding='same',
+                # return_sequences=True,
+                # )
+        # )
     # model.add(
             # ConvLSTM2D(
                 # filters=64,
                 # kernel_size=(5,5),
                 # padding='same',
                 # return_sequences=True,
-                # # return_sequences=False,
                 # )
         # )
-    model.add(
-            ConvLSTM2D(
-                filters=1,
-                kernel_size=(3,3),
-                padding='same',
-                return_sequences=False,
-                )
-        )
+    # # model.add(
+            # # ConvLSTM2D(
+                # # filters=64,
+                # # kernel_size=(5,5),
+                # # padding='same',
+                # # return_sequences=True,
+                # # # return_sequences=False,
+                # # )
+        # # )
+    # model.add(
+            # ConvLSTM2D(
+                # filters=1,
+                # kernel_size=(3,3),
+                # padding='same',
+                # return_sequences=False,
+                # )
+        # )
     # model.add(
             # Conv3D(filters=1,
                 # kernel_size=(3,3,1),
